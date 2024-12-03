@@ -45,6 +45,16 @@ struct InstanceProperties {
 };
 InstanceProperties* rawInsData;
 
+// SSBO : rotation 
+struct Colume {
+	glm::vec4 vector;
+};
+Colume* rotCol0;
+Colume* rotCol1;
+Colume* rotCol2;
+Colume* rotCol3;
+
+
 
 // buffer
 GLuint vaoHandle;       // attribute
@@ -303,6 +313,9 @@ void loadRockModel()
 		return;
 	}
 	//cout << "Model has " << scene->mNumMeshes << " meshes." << endl;
+    glm::vec3 A;
+	glm::vec3 B;
+	glm::vec3 C;
 
 	for (unsigned int m = 0; m < scene->mNumMeshes; m++)
 	{
@@ -327,9 +340,57 @@ void loadRockModel()
 			/*std::cout << "Texture Coord " << i << ": ("
 			 << mesh->mTextureCoords[0][i].x << ", "
 			 << mesh->mTextureCoords[0][i].y << ")" << std::endl;*/
+			//float X = mesh->mVertices[i].x;
+			//float Y = mesh->mVertices[i].y;
+			//float Z = mesh->mVertices[i].z;
+			
+			
 			rockNormalData.push_back(mesh->mNormals[i].x);
 			rockNormalData.push_back(mesh->mNormals[i].y);
 			rockNormalData.push_back(mesh->mNormals[i].z);
+			//if (i % 3 == 0) {
+			//	A.x = mesh->mVertices[i].x;
+			//	A.y = mesh->mVertices[i].y;
+			//	A.z = mesh->mVertices[i].z;
+
+			//}
+			//if (i % 3 == 1) {
+			//	B.x = mesh->mVertices[i].x;
+			//	B.y = mesh->mVertices[i].y;
+			//	B.z = mesh->mVertices[i].z;
+			//}
+			//if (i % 3 == 2) {
+			//	C.x = mesh->mVertices[i].x;
+			//	C.y = mesh->mVertices[i].y;
+			//	C.z = mesh->mVertices[i].z;
+			//	// compute
+			//	glm::vec3 U = B - A;
+			//	glm::vec3 V = C - A;
+			//	U = glm::normalize(U);
+			//	V = glm::normalize(V);
+
+			//	glm::vec3 Z = glm::cross(U, V);
+			//	Z = glm::normalize(Z);
+			//	rockNormalData.push_back(Z.x);
+			//	rockNormalData.push_back(Z.y);
+			//	rockNormalData.push_back(Z.z);
+			//	rockNormalData.push_back(Z.x);
+			//	rockNormalData.push_back(Z.y);
+			//	rockNormalData.push_back(Z.z);
+			//	rockNormalData.push_back(Z.x);
+			//	rockNormalData.push_back(Z.y);
+			//	rockNormalData.push_back(Z.z);
+
+			//	/*rockTangent.push_back(V.x);
+			//	rockTangent.push_back(V.y);
+			//	rockTangent.push_back(V.z);
+			//	rockTangent.push_back(V.x);
+			//	rockTangent.push_back(V.y);
+			//	rockTangent.push_back(V.z);
+			//	rockTangent.push_back(V.x);
+			//	rockTangent.push_back(V.y);
+			//	rockTangent.push_back(V.z);*/
+			//}
 
 			/*std::cout << "normal " << i << ": ("
 			 << mesh->mNormals[i].x << ", "
@@ -346,9 +407,14 @@ void loadRockModel()
 			for (unsigned int j = 0; j < face.mNumIndices; j++) {
 				//std::cout << i << " mFaces "<< ": " << face.mIndices[j] << std::endl;
 				rockIndices.push_back(face.mIndices[j]);
+				//std::cout << i << " mFaces "<< ": " << face.mIndices[j] << std::endl;
+
 			}
 		}
 	}
+	std::cout << "num of vertices: " << rockVertexData.size() << std::endl;
+	std::cout << "num of normals: " << rockNormalData.size() << std::endl;
+
 }
 
 void loadRockTexture()
@@ -376,8 +442,6 @@ void loadRockTexture()
 	stbi_image_free(rockTextureData);
 }
 
-
-
 void loadRockNormalTexture()
 {
 	glGenTextures(1, &rockNormalTextureHandle);
@@ -400,11 +464,6 @@ void loadRockNormalTexture()
 	}
 	stbi_image_free(rockNormalTextureData);
 }
-
-
-
-
-
 
 void loadPlaneModel()
 {
@@ -488,6 +547,8 @@ void loadPlaneTexture()
 	stbi_image_free(planeTextureData);
 }
 
+
+
 void initSample() {
 	MyPoissonSample* sample0 = MyPoissonSample::fromFile("assets/poissonPoints_1010.ppd2");
 	MyPoissonSample* sample1 = MyPoissonSample::fromFile("assets/cityLots_sub_0.ppd2");
@@ -503,6 +564,11 @@ void initSample() {
 
 	NUM_TOTAL_INSTANCE = NUM_SAMPLE0+NUM_SAMPLE1+NUM_SAMPLE2+NUM_SAMPLE3+ NUM_SAMPLE4;
 	rawInsData = new InstanceProperties[NUM_TOTAL_INSTANCE];
+	rotCol0 = new Colume[NUM_TOTAL_INSTANCE];
+	rotCol1 = new Colume[NUM_TOTAL_INSTANCE];
+	rotCol2 = new Colume[NUM_TOTAL_INSTANCE];
+	rotCol3 = new Colume[NUM_TOTAL_INSTANCE];
+
 
 	// query position and rotation
 	int k = 0;
@@ -513,12 +579,19 @@ void initSample() {
 		glm::vec3 rad(sample0->m_radians[i * 3 + 0], 
 			          sample0->m_radians[i * 3 + 1], 
 			          sample0->m_radians[i * 3 + 2]);
+
+
 		// calculate rotation matrix
 		glm::quat q = glm::quat(rad);
 		glm::mat4 rotationMatrix = glm::toMat4(q);
 		
-		// 存點的位置
+		// 存點的位置和旋轉
 		rawInsData[k].position = glm::vec4(position, 1.0);
+		rotCol0[k].vector = rotationMatrix[0];
+		rotCol1[k].vector = rotationMatrix[1];
+		rotCol2[k].vector = rotationMatrix[2];
+		rotCol3[k].vector = rotationMatrix[3];
+
 		k++;
 	}
 	for (int i = 0; i < sample1->m_numSample; i++) {
@@ -532,8 +605,12 @@ void initSample() {
 		glm::quat q = glm::quat(rad);
 		glm::mat4 rotationMatrix = glm::toMat4(q);
 
-		// 存點的位置
+		// 存點的位置和旋轉
 		rawInsData[k].position = glm::vec4(position, 1.0);
+		rotCol0[k].vector = rotationMatrix[0];
+		rotCol1[k].vector = rotationMatrix[1];
+		rotCol2[k].vector = rotationMatrix[2];
+		rotCol3[k].vector = rotationMatrix[3];
 		k++;
 	}
 	for (int i = 0; i < sample2->m_numSample; i++) {
@@ -543,12 +620,17 @@ void initSample() {
 		glm::vec3 rad(sample2->m_radians[i * 3 + 0],
 			sample2->m_radians[i * 3 + 1],
 			sample2->m_radians[i * 3 + 2]);
+
 		// calculate rotation matrix
 		glm::quat q = glm::quat(rad);
 		glm::mat4 rotationMatrix = glm::toMat4(q);
 
-		// 存點的位置
+		// 存點的位置和旋轉
 		rawInsData[k].position = glm::vec4(position, 1.0);
+		rotCol0[k].vector = rotationMatrix[0];
+		rotCol1[k].vector = rotationMatrix[1];
+		rotCol2[k].vector = rotationMatrix[2];
+		rotCol3[k].vector = rotationMatrix[3];
 		k++;
 	}
 	for (int i = 0; i < sample3->m_numSample; i++) {
@@ -558,12 +640,19 @@ void initSample() {
 		glm::vec3 rad(sample3->m_radians[i * 3 + 0],
 			sample3->m_radians[i * 3 + 1],
 			sample3->m_radians[i * 3 + 2]);
+
+
+		
 		// calculate rotation matrix
 		glm::quat q = glm::quat(rad);
 		glm::mat4 rotationMatrix = glm::toMat4(q);
 
 		// 存點的位置
 		rawInsData[k].position = glm::vec4(position, 1.0);
+		rotCol0[k].vector = rotationMatrix[0];
+		rotCol1[k].vector = rotationMatrix[1];
+		rotCol2[k].vector = rotationMatrix[2];
+		rotCol3[k].vector = rotationMatrix[3];
 		k++;
 	}
 	for (int i = 0; i < sample4->m_numSample; i++) {
@@ -573,12 +662,18 @@ void initSample() {
 		glm::vec3 rad(sample4->m_radians[i * 3 + 0],
 			sample4->m_radians[i * 3 + 1],
 			sample4->m_radians[i * 3 + 2]);
+
 		// calculate rotation matrix
+		
 		glm::quat q = glm::quat(rad);
 		glm::mat4 rotationMatrix = glm::toMat4(q);
 
 		// 存點的位置
 		rawInsData[k].position = glm::vec4(position, 1.0);
+		rotCol0[k].vector = rotationMatrix[0];
+		rotCol1[k].vector = rotationMatrix[1];
+		rotCol2[k].vector = rotationMatrix[2];
+		rotCol3[k].vector = rotationMatrix[3];
 		k++;
 	}
 }
@@ -640,6 +735,50 @@ void initialize() {
 	glBufferStorage(GL_SHADER_STORAGE_BUFFER, NUM_TOTAL_INSTANCE * sizeof(InstanceProperties), nullptr, GL_MAP_READ_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, validInstanceDataBufferHandle);
 
+	// SSBO col0
+	GLuint rawRotColHandle0;
+	glGenBuffers(1, &rawRotColHandle0);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, rawRotColHandle0);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, NUM_TOTAL_INSTANCE * sizeof(Colume), rotCol0, GL_MAP_READ_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, rawRotColHandle0);
+	GLuint validRotColHandle0;
+	glGenBuffers(1, &validRotColHandle0);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, validRotColHandle0);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, NUM_TOTAL_INSTANCE * sizeof(Colume), nullptr, GL_MAP_READ_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, validRotColHandle0);
+	// SSBO col1
+	GLuint rawRotColHandle1;
+	glGenBuffers(1, &rawRotColHandle1);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, rawRotColHandle1);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, NUM_TOTAL_INSTANCE * sizeof(Colume), rotCol1, GL_MAP_READ_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, rawRotColHandle1);
+	GLuint validRotColHandle1;
+	glGenBuffers(1, &validRotColHandle1);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, validRotColHandle1);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, NUM_TOTAL_INSTANCE * sizeof(Colume), nullptr, GL_MAP_READ_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, validRotColHandle1);
+	// SSBO col2
+	GLuint rawRotColHandle2;
+	glGenBuffers(1, &rawRotColHandle2);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, rawRotColHandle2);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, NUM_TOTAL_INSTANCE * sizeof(Colume), rotCol2, GL_MAP_READ_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, rawRotColHandle2);
+	GLuint validRotColHandle2;
+	glGenBuffers(1, &validRotColHandle2);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, validRotColHandle2);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, NUM_TOTAL_INSTANCE * sizeof(Colume), nullptr, GL_MAP_READ_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, validRotColHandle2);
+	// SSBO col3
+	GLuint rawRotColHandle3;
+	glGenBuffers(1, &rawRotColHandle3);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, rawRotColHandle3);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, NUM_TOTAL_INSTANCE * sizeof(Colume), rotCol3, GL_MAP_READ_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, rawRotColHandle3);
+	GLuint validRotColHandle3;
+	glGenBuffers(1, &validRotColHandle3);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, validRotColHandle3);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, NUM_TOTAL_INSTANCE * sizeof(Colume), nullptr, GL_MAP_READ_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, validRotColHandle3);
 
 	drawCommands[0].count = indexCount[0];
 	drawCommands[0].instanceCount = 0;
@@ -708,6 +847,30 @@ void initialize() {
 	glEnableVertexAttribArray(3);
 	glVertexAttribDivisor(3, 1);
 
+	// col0
+	glBindBuffer(GL_ARRAY_BUFFER, validRotColHandle0);
+	glVertexAttribPointer(4, 4, GL_FLOAT, false, sizeof(Colume), (void*)0);
+	glEnableVertexAttribArray(4);
+	glVertexAttribDivisor(4, 1);
+	// col1
+	glBindBuffer(GL_ARRAY_BUFFER, validRotColHandle1);
+	glVertexAttribPointer(5, 4, GL_FLOAT, false, sizeof(Colume), (void*)0);
+	glEnableVertexAttribArray(5);
+	glVertexAttribDivisor(5, 1);
+	//// col2
+	glBindBuffer(GL_ARRAY_BUFFER, validRotColHandle2);
+	glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(Colume), (void*)0);
+	glEnableVertexAttribArray(6);
+	glVertexAttribDivisor(6, 1);
+	//// col3
+	glBindBuffer(GL_ARRAY_BUFFER, validRotColHandle3);
+	glVertexAttribPointer(7, 4, GL_FLOAT, false, sizeof(Colume), (void*)0);
+	glEnableVertexAttribArray(7);
+	glVertexAttribDivisor(7, 1);
+
+	
+
+
 	glBindVertexArray(0);
 
 
@@ -741,7 +904,7 @@ void initialize() {
 	glBufferData(GL_ARRAY_BUFFER, rockTangent.size() * sizeof(float), rockTangent.data(), GL_STATIC_DRAW);
 	glVertexAttribPointer(6, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(6);
-	std::cout << rockTangent.data() << std::endl;
+	//std::cout << rockTangent.data() << std::endl;
 
 	glGenBuffers(1, &rockIboHandle);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, rockIboHandle);

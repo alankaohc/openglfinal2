@@ -13,6 +13,9 @@ struct DrawCommand{
 struct InstanceProperties{
 	vec4 position ;
 };
+struct Colume{
+	vec4 vector ;
+};
 layout (std430, binding=3) buffer DrawCommandsBlock{
 	DrawCommand commands[] ;
 };
@@ -22,6 +25,33 @@ layout (std430, binding=1) buffer InstanceData{
 layout (std430, binding=2) buffer CurrValidInstanceData{
 	InstanceProperties currValidInstanceProps[] ;
 };
+
+layout (std430, binding=4) buffer RawColumeData0{
+	Colume rawRotCol0[] ;
+};
+layout (std430, binding=5) buffer ValidColumeData0{
+	Colume validRotCol0[] ;
+};
+
+layout (std430, binding=6) buffer RawColumeData1{
+	Colume rawRotCol1[] ;
+};
+layout (std430, binding=7) buffer ValidColumeData1{
+	Colume validRotCol1[] ;
+};
+layout (std430, binding=8) buffer RawColumeData2{
+	Colume rawRotCol2[] ;
+};
+layout (std430, binding=9) buffer ValidColumeData2{
+	Colume validRotCol2[] ;
+};
+layout (std430, binding=10) buffer RawColumeData3{
+	Colume rawRotCol3[] ;
+};
+layout (std430, binding=11) buffer ValidColumeData3{
+	Colume validRotCol3[] ;
+};
+
 
 uniform int numMaxInstance;
 uniform mat4 viewProjMat;
@@ -61,5 +91,9 @@ void main() {
 		}
 		const uint UNIQUE_IDX = atomicAdd(commands[con_n].instanceCount, 1);
 	    currValidInstanceProps[UNIQUE_IDX+commands[con_n].baseInstance] = rawInstanceProps[idx] ;
+		validRotCol0[UNIQUE_IDX+commands[con_n].baseInstance] = rawRotCol0[idx] ;
+		validRotCol1[UNIQUE_IDX+commands[con_n].baseInstance] = rawRotCol1[idx] ;
+		validRotCol2[UNIQUE_IDX+commands[con_n].baseInstance] = rawRotCol2[idx] ;
+		validRotCol3[UNIQUE_IDX+commands[con_n].baseInstance] = rawRotCol3[idx] ;
 	}
 }
