@@ -8,7 +8,7 @@ in vec2 f_uv ;
 
 uniform sampler2D albedoTexture ;
 
-layout (location = 0) out vec4 fragColor ;
+//layout (location = 0) out vec4 fragColor ;
 
 // Input from vertex shader
 in VS_OUT
@@ -21,6 +21,12 @@ vec3 V;
 uniform vec3 diffuse_albedo = vec3(0.5, 0.2, 0.7);
 uniform vec3 specular_albedo = vec3(0.7);
 uniform float shininess_power = 200.0;
+
+
+layout (location = 0) out vec3 gPosition;
+layout (location = 1) out vec3 gNormal;
+layout (location = 2) out vec4 gDiffuse;
+layout (location = 3) out vec4 gSpecular;
 
 void main()
 {
@@ -41,6 +47,11 @@ void main()
 	vec3 specular = pow(max(dot(N, H), 0.0), shininess_power) * texel.xyz;
 	// Write final color to the framebuffer
 	//fragColor = vec4(diffuse + specular, 1.0);
-	fragColor = vec4(texel.xyz, 1.0);
+	gPosition = f_worldVertex;
+    // also store the per-fragment normals into the gbuffer
+    gNormal = normalize(f_worldNormal);
+    // and the diffuse per-fragment color
+	gDiffuse = vec4(texel.xyz, 1.0);
 	//fragColor = vec4(1.0,0.0,0.0,1.0);
+	gSpecular = vec4(1.0, 1.0, 1.0, 32.0);
 }

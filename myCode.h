@@ -156,7 +156,7 @@ GLuint planePosCompLoc;     // slime pos compute shader
 
 // G buffer
 unsigned int gBuffer;
-unsigned int gPosition, gNormal, gAlbedoSpec;
+unsigned int gPosition, gNormal, gDiffuse, gSpecular, gShininess;
 unsigned int rboDepth;
 
 
@@ -699,16 +699,29 @@ void genTexture(int w, int h) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
-	// color + specular color buffer
-	glGenTextures(1, &gAlbedoSpec);
-	glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+	// color color buffer
+	glGenTextures(1, &gDiffuse);
+	glBindTexture(GL_TEXTURE_2D, gDiffuse);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gDiffuse, 0);
+	// specular + shininess color buffer
+	glGenTextures(1, &gSpecular);
+	glBindTexture(GL_TEXTURE_2D, gSpecular);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gSpecular, 0);
+
+
+
+
+
 	// tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
-	unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-	glDrawBuffers(3, attachments);
+	unsigned int attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, 
+		                            GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
+	glDrawBuffers(4, attachments);
 	// create and attach depth buffer (renderbuffer)
 
 	glGenRenderbuffers(1, &rboDepth);
@@ -968,7 +981,7 @@ void setUniformVariables() {
 
 	quadPosLoc = glGetUniformLocation(deferredShaderPointer->ID, "gPosition");
 	quadNormalLoc = glGetUniformLocation(deferredShaderPointer->ID, "gNormal");
-	quadAlbedoLoc = glGetUniformLocation(deferredShaderPointer->ID, "gAlbedoSpec");
+	quadAlbedoLoc = glGetUniformLocation(deferredShaderPointer->ID, "gDiffuse");
 	deferredFlagLoc = glGetUniformLocation(deferredShaderPointer->ID, "flag");
 }
 
@@ -1116,7 +1129,7 @@ void myGodRender(const INANOA::MyCameraManager* m_myCameraManager) {
 	glActiveTexture(GL_TEXTURE6);
 	glBindTexture(GL_TEXTURE_2D, gNormal);
 	glActiveTexture(GL_TEXTURE7);
-	glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+	glBindTexture(GL_TEXTURE_2D, gDiffuse);
 	glUniform1i(quadPosLoc, 5);
 	glUniform1i(quadNormalLoc, 6);
 	glUniform1i(quadAlbedoLoc, 7);
@@ -1205,7 +1218,7 @@ void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager) {
 	glActiveTexture(GL_TEXTURE7);
 	glBindTexture(GL_TEXTURE_2D, gNormal);
 	glActiveTexture(GL_TEXTURE8);
-	glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+	glBindTexture(GL_TEXTURE_2D, gDiffuse);
 	glUniform1i(quadPosLoc, 6);
 	glUniform1i(quadNormalLoc, 7);
 	glUniform1i(quadAlbedoLoc, 8);

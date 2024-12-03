@@ -10,7 +10,9 @@ uniform sampler2DArray albedoTextureArray ;
 
 layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
-layout (location = 2) out vec4 gAlbedoSpec;
+layout (location = 2) out vec4 gDiffuse;
+layout (location = 3) out vec4 gSpecular;
+
 
 void main()
 {
@@ -25,8 +27,10 @@ void main()
     // also store the per-fragment normals into the gbuffer
     gNormal = normalize(f_worldNormal);
     // and the diffuse per-fragment color
-    gAlbedoSpec = texel;
+    gDiffuse = texel;
     // store specular intensity in gAlbedoSpec's alpha component
+    gSpecular = vec4(0.0, 0.0, 0.0, 1.0);
+
 }
 
 

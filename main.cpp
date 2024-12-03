@@ -325,6 +325,9 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	else if (key == GLFW_KEY_1) { deferredFlag = 1; }
 	else if (key == GLFW_KEY_2) { deferredFlag = 2; }
 	else if (key == GLFW_KEY_3) { deferredFlag = 3; }
+	else if (key == GLFW_KEY_4) { deferredFlag = 4; }
+	else if (key == GLFW_KEY_5) { deferredFlag = 5; }
+
 
 }
 void mouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset) {}

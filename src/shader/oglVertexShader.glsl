@@ -16,6 +16,10 @@ layout(location = 9) uniform mat4 terrainVToUVMat;
 layout(location = 1) uniform int vertexProcessIdx ;
 
 
+
+out vec3 f_worldVertex ;
+out vec3 f_worldNormal ;
+
 void commonProcess(){
 	vec4 worldVertex = modelMat * vec4(v_vertex, 1.0) ;
 	vec4 worldNormal = modelMat * vec4(v_normal, 0.0) ;
@@ -26,7 +30,12 @@ void commonProcess(){
 	f_viewVertex = viewVertex.xyz;
 	f_uv = v_uv ;
 
+	f_worldVertex = worldVertex.xyz;
+	f_worldNormal = worldNormal.xyz;
+
 	gl_Position = projMat * viewVertex ;
+
+
 }
 
 void terrainProcess(){
@@ -48,6 +57,9 @@ void terrainProcess(){
 	
 	f_viewVertex = viewVertex.xyz;
 	f_uv = uv.xyz ;
+
+	f_worldVertex = worldV.xyz;
+	f_worldNormal = normalTex.xyz;
 
 	gl_Position = projMat * viewVertex ;
 }

@@ -12,7 +12,6 @@ in mat3 TBN ;
 uniform sampler2D albedoTexture ;
 uniform sampler2D NormalTexture ;
 
-layout (location = 0) out vec4 fragColor ;
 
 // Input from vertex shader
 in VS_OUT
@@ -26,6 +25,12 @@ vec3 lightDir;
 // Material properties
 
 uniform float shininess_power = 200.0;
+
+
+layout (location = 0) out vec3 gPosition;
+layout (location = 1) out vec3 gNormal;
+layout (location = 2) out vec4 gDiffuse;
+layout (location = 3) out vec4 gSpecular;
 
 void main()
 {
@@ -41,7 +46,7 @@ void main()
 	vec3 diffuse = max(dot(N, L), 0.0) * diffuse_albedo;
 
 	vec3 specular_albedo = vec3(1.0);
-	vec3 specular = max(pow(dot(R, V), 20.0), 0.0) * specular_albedo;
+	vec3 specular = max(pow(dot(R, V), 32.0), 0.0) * specular_albedo;
 	
 
 	// Normalize the incoming N, L and V vectors
@@ -64,7 +69,12 @@ void main()
 	//vec3 diffuse = max(dot(N, L), 0.0) * texel.xyz;
 	//vec3 specular = pow(max(dot(N, H), 0.0), shininess_power) * texel.xyz;
 	// Write final color to the framebuffer
-	fragColor = vec4(color , 1.0);
+
+		
+	gPosition = f_worldVertex;
+    gNormal = normalize(f_worldNormal);
+	gDiffuse = vec4(color , 1.0);
+	gSpecular = vec4(1.0, 1.0, 1.0, 32.0);
 	//fragColor = vec4(texel.xyz, 1.0);
 	
 }

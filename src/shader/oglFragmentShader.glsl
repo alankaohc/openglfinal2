@@ -3,10 +3,17 @@
 in vec3 f_viewVertex ;
 in vec3 f_uv ;
 
-layout (location = 0) out vec4 fragColor ;
-
+//layout (location = 0) out vec4 fragColor ;
 layout(location = 2) uniform int pixelProcessId;
 layout(location = 4) uniform sampler2D albedoTexture ;
+
+layout (location = 0) out vec3 gPosition;
+layout (location = 1) out vec3 gNormal;
+layout (location = 2) out vec4 gDiffuse;
+layout (location = 3) out vec4 gSpecular;
+
+in vec3 f_worldVertex ;
+in vec3 f_worldNormal ;
 
 
 vec4 withFog(vec4 color){
@@ -26,12 +33,21 @@ vec4 withFog(vec4 color){
 
 void terrainPass(){
 	vec4 texel = texture(albedoTexture, f_uv.xy) ;
-	fragColor = withFog(texel); 
-	fragColor.a = 1.0;	
+	//fragColor = withFog(texel); 
+	//fragColor.a = 1.0;	
+	gDiffuse = withFog(texel);
+	gDiffuse.a = 1.0;
+	gPosition = f_worldVertex;
+	gNormal = f_worldNormal;
+	gSpecular = vec4(0.0, 0.0, 0.0, 1.0);
 }
 
 void pureColor(){
-	fragColor = withFog(vec4(1.0, 0.0, 0.0, 1.0)) ;
+	//fragColor = withFog(vec4(1.0, 0.0, 0.0, 1.0)) ;
+	gDiffuse = withFog(vec4(1.0, 0.0, 0.0, 1.0)) ;
+	gPosition = f_worldVertex;
+	gNormal = f_worldNormal;
+	gSpecular = vec4(0.0, 0.0, 0.0, 1.0);
 }
 
 void main(){	
