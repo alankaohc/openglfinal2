@@ -156,7 +156,7 @@ GLuint planePosCompLoc;     // slime pos compute shader
 
 // G buffer
 unsigned int gBuffer;
-unsigned int gPosition, gNormal, gDiffuse, gSpecular, gShininess;
+unsigned int gPosition, gNormal, gDiffuse, gSpecular, gView;
 unsigned int rboDepth;
 
 
@@ -169,7 +169,7 @@ GLuint quadVBO;
 GLuint quadPosLoc;
 GLuint quadNormalLoc;
 GLuint quadAlbedoLoc;
-
+GLuint quadSpecularLoc;
 
 // switch mode
 int deferredFlag = 1;
@@ -685,13 +685,13 @@ void genTexture(int w, int h) {
 	glGenFramebuffers(1, &gBuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
 
-	// position color buffer
-	glGenTextures(1, &gPosition);
-	glBindTexture(GL_TEXTURE_2D, gPosition);
+	// specular + shininess color buffer
+	glGenTextures(1, &gSpecular);
+	glBindTexture(GL_TEXTURE_2D, gSpecular);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gSpecular, 0);
 	// normal color buffer
 	glGenTextures(1, &gNormal);
 	glBindTexture(GL_TEXTURE_2D, gNormal);
@@ -702,25 +702,32 @@ void genTexture(int w, int h) {
 	// color color buffer
 	glGenTextures(1, &gDiffuse);
 	glBindTexture(GL_TEXTURE_2D, gDiffuse);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gDiffuse, 0);
-	// specular + shininess color buffer
-	glGenTextures(1, &gSpecular);
-	glBindTexture(GL_TEXTURE_2D, gSpecular);
+	// position color buffer
+	glGenTextures(1, &gPosition);
+	glBindTexture(GL_TEXTURE_2D, gPosition);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gPosition, 0);
+	// view
+	/*glGenTextures(1, &gView);
+	glBindTexture(GL_TEXTURE_2D, gView);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gSpecular, 0);
-
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, gView, 0);*/
 
 
 
 
 	// tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
 	unsigned int attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, 
-		                            GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
+		                            GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
+	                                };
 	glDrawBuffers(4, attachments);
 	// create and attach depth buffer (renderbuffer)
 
@@ -983,6 +990,7 @@ void setUniformVariables() {
 	quadNormalLoc = glGetUniformLocation(deferredShaderPointer->ID, "gNormal");
 	quadAlbedoLoc = glGetUniformLocation(deferredShaderPointer->ID, "gDiffuse");
 	deferredFlagLoc = glGetUniformLocation(deferredShaderPointer->ID, "flag");
+	quadSpecularLoc = glGetUniformLocation(deferredShaderPointer->ID, "gSpecular");
 }
 
 void myInit() {
@@ -1130,9 +1138,13 @@ void myGodRender(const INANOA::MyCameraManager* m_myCameraManager) {
 	glBindTexture(GL_TEXTURE_2D, gNormal);
 	glActiveTexture(GL_TEXTURE7);
 	glBindTexture(GL_TEXTURE_2D, gDiffuse);
+	glActiveTexture(GL_TEXTURE8);
+	glBindTexture(GL_TEXTURE_2D, gSpecular);
 	glUniform1i(quadPosLoc, 5);
 	glUniform1i(quadNormalLoc, 6);
 	glUniform1i(quadAlbedoLoc, 7);
+	glUniform1i(quadSpecularLoc, 8);
+
 	glUniform1i(deferredFlagLoc, deferredFlag);
 	renderQuad();
 }
@@ -1213,15 +1225,21 @@ void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager) {
 	//glClear(GL_COLOR_BUFFER_BIT);
 
 	deferredShaderPointer->use();
-	glActiveTexture(GL_TEXTURE6);
+
+	glActiveTexture(GL_TEXTURE5);
 	glBindTexture(GL_TEXTURE_2D, gPosition);
-	glActiveTexture(GL_TEXTURE7);
+	glActiveTexture(GL_TEXTURE6);
 	glBindTexture(GL_TEXTURE_2D, gNormal);
-	glActiveTexture(GL_TEXTURE8);
+	glActiveTexture(GL_TEXTURE7);
 	glBindTexture(GL_TEXTURE_2D, gDiffuse);
-	glUniform1i(quadPosLoc, 6);
-	glUniform1i(quadNormalLoc, 7);
-	glUniform1i(quadAlbedoLoc, 8);
+	glActiveTexture(GL_TEXTURE8);
+	glBindTexture(GL_TEXTURE_2D, gSpecular);
+
+	glUniform1i(quadPosLoc, 5);
+	glUniform1i(quadNormalLoc, 6);
+	glUniform1i(quadAlbedoLoc, 7);
+	glUniform1i(quadSpecularLoc, 8);
+
 	glUniform1i(deferredFlagLoc, deferredFlag);
 	renderQuad();
 	

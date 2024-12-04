@@ -22,11 +22,11 @@ uniform vec3 diffuse_albedo = vec3(0.5, 0.2, 0.7);
 uniform vec3 specular_albedo = vec3(0.7);
 uniform float shininess_power = 200.0;
 
-
-layout (location = 0) out vec3 gPosition;
+layout (location = 0) out vec4 gSpecular;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gDiffuse;
-layout (location = 3) out vec4 gSpecular;
+layout (location = 3) out vec3 gPosition;
+//layout (location = 4) out vec3 gView;
 
 void main()
 {
@@ -54,4 +54,5 @@ void main()
 	gDiffuse = vec4(texel.xyz, 1.0);
 	//fragColor = vec4(1.0,0.0,0.0,1.0);
 	gSpecular = vec4(1.0, 1.0, 1.0, 32.0);
+	//gView = V; 
 }

@@ -255,6 +255,8 @@ void paintGL(){
 
 	// 1. geometry pass: render scene's geometry/color data into gbuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+	unsigned int attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
+	glDrawBuffers(4, attachments);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	defaultRenderer->setViewport(godViewport[0], godViewport[1], godViewport[2], godViewport[3]);
 	//defaultRenderer->setViewport(playerViewport[0], playerViewport[1], playerViewport[2], playerViewport[3]);
@@ -265,7 +267,14 @@ void paintGL(){
 	defaultRenderer->m_shaderProgram->useProgram();
 	// rendering with god view
 	glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+	
+
+	glDrawBuffers(4, attachments);
+	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+
 	defaultRenderer->setViewport(godViewport[0], godViewport[1], godViewport[2], godViewport[3]);
 	defaultRenderer->setView(godVM);
 	defaultRenderer->setProjection(godProjMat);

@@ -7,10 +7,11 @@ in vec3 f_uv ;
 layout(location = 2) uniform int pixelProcessId;
 layout(location = 4) uniform sampler2D albedoTexture ;
 
-layout (location = 0) out vec3 gPosition;
+
+layout (location = 0) out vec4 gSpecular;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gDiffuse;
-layout (location = 3) out vec4 gSpecular;
+layout (location = 3) out vec3 gPosition;
 
 in vec3 f_worldVertex ;
 in vec3 f_worldNormal ;
