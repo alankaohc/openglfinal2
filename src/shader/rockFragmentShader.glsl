@@ -31,6 +31,9 @@ layout (location = 0) out vec4 gSpecular;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gDiffuse;
 layout (location = 3) out vec3 gPosition;
+
+uniform bool u_NormalMappingEnabled;
+
 //layout (location = 4) out vec3 gView;
 
 void main()
@@ -43,6 +46,11 @@ void main()
     gNormal = N;
 	gDiffuse = vec4(diffuse_albedo , 1.0);
 	gSpecular = vec4(1.0, 1.0, 1.0, 32.0);
+	if (u_NormalMappingEnabled) {
+	}
+	else {
+		gNormal = diffuse_albedo;
+	}
 	//gView = V;
 	
 }

@@ -263,7 +263,7 @@ void paintGL(){
 	defaultRenderer->setView(playerVM);
 	defaultRenderer->setProjection(playerProjMat);
 	defaultRenderer->renderPass();
-	myPlayerRender(m_myCameraManager);
+	myPlayerRender(m_myCameraManager, m_imguiPanel);
 	defaultRenderer->m_shaderProgram->useProgram();
 	// rendering with god view
 	glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
@@ -279,7 +279,7 @@ void paintGL(){
 	defaultRenderer->setView(godVM);
 	defaultRenderer->setProjection(godProjMat);
 	defaultRenderer->renderPass();
-	myGodRender(m_myCameraManager);
+	myGodRender(m_myCameraManager, m_imguiPanel);
 	defaultRenderer->m_shaderProgram->useProgram();
 
 	// ===============================
@@ -336,7 +336,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	else if (key == GLFW_KEY_3) { deferredFlag = 3; }
 	else if (key == GLFW_KEY_4) { deferredFlag = 4; }
 	else if (key == GLFW_KEY_5) { deferredFlag = 5; }
-
+	
 
 }
 void mouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset) {}

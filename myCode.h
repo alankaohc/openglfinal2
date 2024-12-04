@@ -14,6 +14,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "src\MyCameraManager.h"
+#include "src\MyImGuiPanel.h"
 
 // shader 
 MyShader* myShaderPointer;
@@ -174,8 +175,7 @@ GLuint quadSpecularLoc;
 // switch mode
 int deferredFlag = 1;
 GLuint deferredFlagLoc;
-
-
+int lastModeT = 4;
 
 // normal mapping
 std::vector<float> rockTangent;
@@ -183,7 +183,7 @@ unsigned char* rockNormalTextureData;
 GLuint rockNormalTextureHandle;
 GLuint rockTboHandle;
 GLuint rockNormalLoc;
-
+GLint normalMappingEnabledLoc;
 
 
 void renderQuad()
@@ -979,6 +979,7 @@ void setUniformVariables() {
 	rockAlbedoLoc = glGetUniformLocation(rockShaderPointer->ID, "albedoTexture");
 	rockPosLoc = glGetUniformLocation(rockShaderPointer->ID, "v_worldPosOffset");
 	rockNormalLoc = glGetUniformLocation(rockShaderPointer->ID, "NormalTexture");
+	normalMappingEnabledLoc = glGetUniformLocation(rockShaderPointer->ID, "u_NormalMappingEnabled");
 
 	planeViewMatLoc = glGetUniformLocation(planeShaderPointer->ID, "viewMat");
 	planeProjMatLoc = glGetUniformLocation(planeShaderPointer->ID, "projMat");
@@ -1057,7 +1058,31 @@ void myComputeRender(const INANOA::MyCameraManager* m_myCameraManager) {
 
 }
 
-void myGodRender(const INANOA::MyCameraManager* m_myCameraManager) {
+
+void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+	if (lastModeT != m_imguiPanel->getModeT()) {
+		switch (m_imguiPanel->getModeT()) {
+		case 1:
+			m_myCameraManager->teleport(0);
+			lastModeT = 1;
+			break;
+		case 2:
+			m_myCameraManager->teleport(1);
+			lastModeT = 2;
+			break;
+		case 3:
+			m_myCameraManager->teleport(2);
+			lastModeT = 3;
+			break;
+		}
+	}
+	
+	deferredFlag = m_imguiPanel->getMode();
+	bool normalMappingEnabled = m_imguiPanel->isNormalMappingEnabled();
+	glUseProgram(rockShaderPointer->ID);
+	glUniform1i(normalMappingEnabledLoc, normalMappingEnabled);
+
+
 
 	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
 	glm::mat4 godViewMatrix = m_myCameraManager->godViewMatrix();
@@ -1149,7 +1174,7 @@ void myGodRender(const INANOA::MyCameraManager* m_myCameraManager) {
 	renderQuad();
 }
 
-void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager) {
+void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 
 	glm::mat4 playerProjectionMatrix = m_myCameraManager->playerProjectionMatrix();
 	glm::mat4 playerViewMatrix = m_myCameraManager->playerViewMatrix();

@@ -16,9 +16,17 @@ public:
 	void update();
 	void setAvgFPS(const double avgFPS);
 	void setAvgFrameTime(const double avgFrameTime);
+	bool isNormalMappingEnabled() const { return m_normalMappingEnabled; }
+	int getMode() const { return mode; }
+	int getModeT() const { return modeT; }
 
 private:
 	double m_avgFPS;
 	double m_avgFrameTime;
+	bool m_normalMappingEnabled;
+	int mode = 1;
+	int modeT = 1;
+
+
 };
 
