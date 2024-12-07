@@ -3,6 +3,7 @@
 in vec2 TexCoords;
 out vec4 FragColor;
 
+
 layout (location=0) uniform sampler2D gSpecular;
 layout (location=1) uniform sampler2D gNormal;
 layout (location=2) uniform sampler2D gDiffuse;
@@ -10,21 +11,38 @@ layout (location=3) uniform sampler2D gPosition;
 layout (location=4) uniform sampler2D depthMap;
 
 //uniform sampler2D gView;
-
 uniform int flag;
+uniform mat4 lightSpaceMatrix;
 
+float ShadowCalculation(vec4 fragPosLightSpace)
+{
+    // perform perspective divide
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    // transform to [0,1] range
+    projCoords = projCoords * 0.5 + 0.5;
+    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
+    float closestDepth = texture(depthMap, projCoords.xy).r; 
+    // get depth of current fragment from light's perspective
+    float currentDepth = projCoords.z;
+    // check whether current frag pos is in shadow
+    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
 
-
+    return shadow;
+}  
 
 
 void main()
 {            
 
+    
     float depthValue = texture(depthMap, TexCoords).r;
     vec3 depth = vec3(depthValue);
     // retrieve data from gbuffer
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
-    
+    vec4 FragPosLightSpace = lightSpaceMatrix * vec4(FragPos, 1.0);
+    float shadow = ShadowCalculation(FragPosLightSpace);
+
+
     // Blinn-Phong shading 
     vec3 Ia = vec3(0.2, 0.2, 0.2);
     vec3 Id = vec3(0.64, 0.64, 0.64);
@@ -45,14 +63,13 @@ void main()
     vec3 ambient = diffuse;
     vec3 specular = pow(max(dot(N, H), 0.0), shininess_power) * specular_albedo;
 
-    vec3 color = Ia*ambient + Id*diffuse + Is*specular;
+    vec3 color = Ia*ambient + (1.0 - shadow) * (Id*diffuse + Is*specular);
     FragPos = normalize(FragPos) * 0.5 + 0.5;
     N = N * 0.5 + 0.5;
 
     color = pow(color, vec3(0.5));
     vec3 tex = texture(gDiffuse, TexCoords).rgb;
-
-
+   
 
     if (flag == 1) {
         FragColor = vec4(depth, 1.0);

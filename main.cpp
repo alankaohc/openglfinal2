@@ -264,21 +264,25 @@ void paintGL(){
 	defaultRenderer->setProjection(playerProjMat);
 	defaultRenderer->renderPass();
 	myPlayerGbufferRender(m_myCameraManager, m_imguiPanel);
+	// bind shadow map
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	ConfigureShaderAndMatrices();
+	myPlayerShadowRender(m_myCameraManager, m_imguiPanel);
 	// render
 	myPlayerRender(m_myCameraManager, m_imguiPanel);
 
-	
-	// 1.1 gbuffer god
+
+	// rendering with god view	
+	// bind gbuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	// rendering with god view
 	defaultRenderer->m_shaderProgram->useProgram();
 	defaultRenderer->setViewport(godViewport[0], godViewport[1], godViewport[2], godViewport[3]);
 	defaultRenderer->setView(godVM);
 	defaultRenderer->setProjection(godProjMat);
 	defaultRenderer->renderPass();
 	myGodGbufferRender(m_myCameraManager, m_imguiPanel);
-
 	// bind shadow map
 	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 	glClear(GL_DEPTH_BUFFER_BIT);
