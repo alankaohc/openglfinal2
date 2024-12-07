@@ -27,23 +27,18 @@ void MyImGuiPanel::update() {
 
 	if (ImGui::RadioButton("Option 1", mode == 1)) {
 		mode = 1;
-		
 	}
 	if (ImGui::RadioButton("Option 2", mode == 2)) {
-		mode = 2;
-		
+		mode = 2;		
 	}
 	if (ImGui::RadioButton("Option 3", mode == 3)) {
 		mode = 3;
-		
 	}
 	if (ImGui::RadioButton("Option 4", mode == 4)) {
 		mode = 4;
-		
 	}
 	if (ImGui::RadioButton("Option 5", mode == 5)) {
 		mode = 5;
-		
 	}
 	
 	if (ImGui::RadioButton("1", modeT == 1)) {

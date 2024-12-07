@@ -176,6 +176,7 @@ GLuint quadSpecularLoc;
 int deferredFlag = 1;
 GLuint deferredFlagLoc;
 int lastModeT = 4;
+bool normalMappingEnabled;
 
 // normal mapping
 std::vector<float> rockTangent;
@@ -185,6 +186,9 @@ GLuint rockTboHandle;
 GLuint rockNormalLoc;
 GLint normalMappingEnabledLoc;
 
+// shadow mapping
+unsigned int depthMapFBO;
+unsigned int depthMap;
 
 void renderQuad()
 {
@@ -547,8 +551,6 @@ void loadPlaneTexture()
 	stbi_image_free(planeTextureData);
 }
 
-
-
 void initSample() {
 	MyPoissonSample* sample0 = MyPoissonSample::fromFile("assets/poissonPoints_1010.ppd2");
 	MyPoissonSample* sample1 = MyPoissonSample::fromFile("assets/cityLots_sub_0.ppd2");
@@ -722,6 +724,7 @@ void genTexture(int w, int h) {
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, gView, 0);*/
 
 
+	
 
 
 	// tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
@@ -740,6 +743,27 @@ void genTexture(int w, int h) {
 		std::cout << "Framebuffer not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
+
+void genShadowMap(int w, int h) {
+	
+	glGenFramebuffers(1, &depthMapFBO);
+	unsigned int SHADOW_WIDTH = w, SHADOW_HEIGHT = h;
+
+	unsigned int depthMap;
+	glGenTextures(1, &depthMap);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 
 void initialize() {
 	// prepare a SSBO for storing raw instance data
@@ -995,47 +1019,30 @@ void setUniformVariables() {
 }
 
 void myInit() {
-	std::cout << "testing\n";
-	
 	loadmodel("assets/bush05_lod2.obj", 0);
 	loadmodel("assets/Medieval_Building_LowPoly/medieval_building_lowpoly_1.obj", 1);
 	loadmodel("assets/Medieval_Building_LowPoly/medieval_building_lowpoly_2.obj", 2);
 	loadmodel("assets/bush01_lod2.obj", 3);
 	loadmodel("assets/grassB.obj", 4);
-
 	loadtexture();
-
 	loadRockModel();
 	loadRockTexture();
 	loadRockNormalTexture();
 	loadPlaneModel();
 	loadPlaneTexture();
 
-	const std::string vsFile = "src/shader/myVertexShader.glsl";
-	const std::string fsFile = "src/shader/myFragmentShader.glsl";
-	const std::string csFile = "src/shader/myComputeShader.glsl";
-	const std::string rcsFile = "src/shader/myResetComputeShader.glsl";
-	const std::string rockvsFile = "src/shader/rockVertexShader.glsl";
-	const std::string rockfsFile = "src/shader/rockFragmentShader.glsl";
-	const std::string planevsFile = "src/shader/planeVertexShader.glsl";
-	const std::string planefsFile = "src/shader/planeFragmentShader.glsl";
 
-	const std::string gvsFile = "src/shader/gbufferVertexShader.glsl";
-	const std::string gfsFile = "src/shader/gbufferFragmentShader.glsl";
-	const std::string dvsFile = "src/shader/deferredVertexShader.glsl";
-	const std::string dfsFile = "src/shader/deferredFragmentShader.glsl";
-
-
-
-	myShaderPointer = new MyShader(gvsFile.c_str(), gfsFile.c_str());
-	rockShaderPointer = new MyShader(rockvsFile.c_str(), rockfsFile.c_str());
-	planeShaderPointer = new MyShader(planevsFile.c_str(), planefsFile.c_str());
-	myCompShaderPointer = new MyComputeShader(csFile.c_str());
-	myResetCompShaderPointer = new MyComputeShader(rcsFile.c_str());
-	deferredShaderPointer = new MyShader(dvsFile.c_str(), dfsFile.c_str());
+	myShaderPointer = new MyShader("src/shader/grassVertexShader.glsl", "src/shader/grassFragmentShader.glsl");
+	rockShaderPointer = new MyShader("src/shader/rockVertexShader.glsl", "src/shader/rockFragmentShader.glsl");
+	planeShaderPointer = new MyShader("src/shader/planeVertexShader.glsl", "src/shader/planeFragmentShader.glsl");
+	myCompShaderPointer = new MyComputeShader("src/shader/myComputeShader.glsl");
+	myResetCompShaderPointer = new MyComputeShader("src/shader/myResetComputeShader.glsl");
+	deferredShaderPointer = new MyShader("src/shader/deferredVertexShader.glsl", "src/shader/deferredFragmentShader.glsl");
+	
 	initSample();
 	initialize();
 	genTexture(1024, 512);
+	setUniformVariables();
 }
 
 void myComputeRender(const INANOA::MyCameraManager* m_myCameraManager) {
@@ -1054,12 +1061,9 @@ void myComputeRender(const INANOA::MyCameraManager* m_myCameraManager) {
 	glUniformMatrix4fv(viewProjMatLoc, 1, false, glm::value_ptr(viewProj));
 	glDispatchCompute((NUM_TOTAL_INSTANCE / 1024) + 1, 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-
 }
 
-
-void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+void myUIinput(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 	if (lastModeT != m_imguiPanel->getModeT()) {
 		switch (m_imguiPanel->getModeT()) {
 		case 1:
@@ -1076,7 +1080,160 @@ void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_img
 			break;
 		}
 	}
+	normalMappingEnabled = m_imguiPanel->isNormalMappingEnabled();
+	deferredFlag = m_imguiPanel->getMode();
+}
+
+void myGodGbufferRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+
+	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
+	glm::mat4 godViewMatrix = m_myCameraManager->godViewMatrix();
+	glm::vec4 godViewPort = m_myCameraManager->godViewport();
+	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
+	glm::mat4 model_matrix = glm::mat4(1.0);
+	glm::vec4 positionVec4 = glm::vec4(25.92, 18.27, 11.75, 1.0);
+	const glm::mat4 airplaneModelMat = m_myCameraManager->airplaneModelMatrix();
+	glm::vec4 planepositionVec4 = glm::vec4(0.0, 0.0, 0.0, 1.0);
+
+	//// 1. geometry pass: render scene's geometry/color data into gbuffer
+
+	// myShader
+	myShaderPointer->use();
+	glUniformMatrix4fv(projMatLoc, 1, false, glm::value_ptr(godProjectionMatrix));
+	glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, glm::value_ptr(godViewMatrix));
+	glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayHandle);
+	glUniform1i(albedoLoc, 0);
+
+	// bind VAO
+	glBindVertexArray(vaoHandle);
+	// bind draw-indirect-buffer
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, cmdBufferHandle);
+	// render
+	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, 5, sizeof(DrawElementsIndirectCommand));
+
+	// rock
+	rockShaderPointer->use();
+	glUniformMatrix4fv(rockProjMatLoc, 1, GL_FALSE, glm::value_ptr(godProjectionMatrix));
+	glUniformMatrix4fv(rockViewMatLoc, 1, GL_FALSE, glm::value_ptr(godViewMatrix));
+	glUniformMatrix4fv(rockModelMatLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
+	glUniform4fv(rockPosLoc, 1, glm::value_ptr(positionVec4));
+	glUniform1i(normalMappingEnabledLoc, normalMappingEnabled);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, rockTextureHandle);
+	glUniform1i(rockAlbedoLoc, 3);
+
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, rockNormalTextureHandle);//Normal mapping
+	glUniform1i(rockNormalLoc, 5);
+
+	glBindVertexArray(rockVaoHandle);
+
+	glDrawElements(GL_TRIANGLES, rockVertexCount, GL_UNSIGNED_INT, 0);
+
+	//plane
+	planeShaderPointer->use();
+	glUniformMatrix4fv(planeProjMatLoc, 1, GL_FALSE, glm::value_ptr(godProjectionMatrix));
+	glUniformMatrix4fv(planeViewMatLoc, 1, GL_FALSE, glm::value_ptr(godViewMatrix));
+	glUniformMatrix4fv(planeModelMatLoc, 1, GL_FALSE, glm::value_ptr(airplaneModelMat));
+	glUniform4fv(planePosLoc, 1, glm::value_ptr(planepositionVec4));
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, planeTextureHandle);
+	glUniform1i(planeAlbedoLoc, 4);
+	glBindVertexArray(planeVaoHandle);
+
+	glDrawElements(GL_TRIANGLES, planeVertexCount, GL_UNSIGNED_INT, 0);
+}
+
+void myPlayerGbufferRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+
+	glm::mat4 playerProjectionMatrix = m_myCameraManager->playerProjectionMatrix();
+	glm::mat4 playerViewMatrix = m_myCameraManager->playerViewMatrix();
+	glm::vec4 godViewPort = m_myCameraManager->godViewport();
+	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
+
+
+	glm::mat4 model_matrix = glm::mat4(1.0);
+	glm::vec4 positionVec4 = glm::vec4(25.92, 18.27, 11.75, 1.0);
+	const glm::mat4 airplaneModelMat = m_myCameraManager->airplaneModelMatrix();
+	glm::vec4 planepositionVec4 = glm::vec4(0.0, 0.0, 0.0, 1.0);
+
+	//// 1. geometry pass: render scene's geometry/color data into gbuffer
+	//glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// myShader
+	myShaderPointer->use();
+	glUniformMatrix4fv(projMatLoc, 1, false, glm::value_ptr(playerProjectionMatrix));
+	glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, glm::value_ptr(playerViewMatrix));
 	
+	glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayHandle);
+	glUniform1i(albedoLoc, 0);
+
+	// bind VAO
+	glBindVertexArray(vaoHandle);
+	// bind draw-indirect-buffer
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, cmdBufferHandle);
+	// render
+	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, 5, sizeof(DrawElementsIndirectCommand));
+
+	//rock
+	rockShaderPointer->use();
+	glUniformMatrix4fv(rockProjMatLoc, 1, GL_FALSE, glm::value_ptr(playerProjectionMatrix));
+	glUniformMatrix4fv(rockViewMatLoc, 1, GL_FALSE, glm::value_ptr(playerViewMatrix));
+	glUniformMatrix4fv(rockModelMatLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
+	glUniform4fv(rockPosLoc, 1, glm::value_ptr(positionVec4));
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, rockTextureHandle);
+	glUniform1i(rockAlbedoLoc, 3);
+
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, rockNormalTextureHandle);//Normal mapping
+	glUniform1i(rockNormalLoc, 5);
+
+	glBindVertexArray(rockVaoHandle);
+
+	glDrawElements(GL_TRIANGLES, rockVertexCount, GL_UNSIGNED_INT, 0);
+
+
+	//plane
+	planeShaderPointer->use();
+	glUniformMatrix4fv(planeProjMatLoc, 1, GL_FALSE, glm::value_ptr(playerProjectionMatrix));
+	glUniformMatrix4fv(planeViewMatLoc, 1, GL_FALSE, glm::value_ptr(playerViewMatrix));
+	glUniformMatrix4fv(planeModelMatLoc, 1, GL_FALSE, glm::value_ptr(airplaneModelMat));
+	glUniform4fv(planePosLoc, 1, glm::value_ptr(planepositionVec4));
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, planeTextureHandle);
+	glUniform1i(planeAlbedoLoc, 4);
+	glBindVertexArray(planeVaoHandle);
+
+	glDrawElements(GL_TRIANGLES, planeVertexCount, GL_UNSIGNED_INT, 0);
+
+
+	
+}
+
+void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+	if (lastModeT != m_imguiPanel->getModeT()) {
+		switch (m_imguiPanel->getModeT()) {
+		case 1:
+			m_myCameraManager->teleport(0);
+			lastModeT = 1;
+			break;
+		case 2:
+			m_myCameraManager->teleport(1);
+			lastModeT = 2;
+			break;
+		case 3:
+			m_myCameraManager->teleport(2);
+			lastModeT = 3;
+			break;
+		}
+	}
+
 	deferredFlag = m_imguiPanel->getMode();
 	bool normalMappingEnabled = m_imguiPanel->isNormalMappingEnabled();
 	glUseProgram(rockShaderPointer->ID);
@@ -1174,7 +1331,7 @@ void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_img
 	renderQuad();
 }
 
-void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+void myPlayerShadowRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 
 	glm::mat4 playerProjectionMatrix = m_myCameraManager->playerProjectionMatrix();
 	glm::mat4 playerViewMatrix = m_myCameraManager->playerViewMatrix();
@@ -1197,7 +1354,7 @@ void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPan
 	myShaderPointer->use();
 	glUniformMatrix4fv(projMatLoc, 1, false, glm::value_ptr(playerProjectionMatrix));
 	glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, glm::value_ptr(playerViewMatrix));
-	
+
 	glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayHandle);
@@ -1267,6 +1424,77 @@ void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPan
 
 	glUniform1i(deferredFlagLoc, deferredFlag);
 	renderQuad();
-	
+
 }
 
+void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+	
+
+	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
+	glm::mat4 godViewMatrix = m_myCameraManager->godViewMatrix();
+	glm::vec4 godViewPort = m_myCameraManager->godViewport();
+	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
+
+	// 2. render pass
+	glViewport(godViewPort[0], godViewPort[1], godViewPort[2], godViewPort[3]);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
+
+	deferredShaderPointer->use();
+
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, gPosition);
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, gNormal);
+	glActiveTexture(GL_TEXTURE7);
+	glBindTexture(GL_TEXTURE_2D, gDiffuse);
+	glActiveTexture(GL_TEXTURE8);
+	glBindTexture(GL_TEXTURE_2D, gSpecular);
+
+	glUniform1i(quadPosLoc, 5);
+	glUniform1i(quadNormalLoc, 6);
+	glUniform1i(quadAlbedoLoc, 7);
+	glUniform1i(quadSpecularLoc, 8);
+
+	glUniform1i(deferredFlagLoc, deferredFlag);
+
+	renderQuad();
+}
+
+void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
+	// 2. render pass
+	glViewport(playerViewPort[0], playerViewPort[1], playerViewPort[2], playerViewPort[3]);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
+
+	deferredShaderPointer->use();
+
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, gPosition);
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, gNormal);
+	glActiveTexture(GL_TEXTURE7);
+	glBindTexture(GL_TEXTURE_2D, gDiffuse);
+	glActiveTexture(GL_TEXTURE8);
+	glBindTexture(GL_TEXTURE_2D, gSpecular);
+
+	glUniform1i(quadPosLoc, 5);
+	glUniform1i(quadNormalLoc, 6);
+	glUniform1i(quadAlbedoLoc, 7);
+	glUniform1i(quadSpecularLoc, 8);
+
+	glUniform1i(deferredFlagLoc, deferredFlag);
+
+	renderQuad();
+
+}
+
+void ConfigureShaderAndMatrices() {
+	float near_plane = 1.0f, far_plane = 7.5f;
+	glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+	glm::mat4 lightView = glm::lookAt(glm::vec3(-2.0f, 4.0f, -1.0f),
+		                              glm::vec3( 0.0f, 0.0f,  0.0f),
+		                              glm::vec3( 0.0f, 1.0f,  0.0f));
+	glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+
+
+}
