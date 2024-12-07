@@ -198,6 +198,7 @@ void resizeGL(GLFWwindow *window, int w, int h){
 	// resize งน
 	glViewport(0, 0, w, h); 
 	genTexture(w, h);
+	genShadowMap(w, h);
 	
 }
 
@@ -263,7 +264,6 @@ void paintGL(){
 	defaultRenderer->setProjection(playerProjMat);
 	defaultRenderer->renderPass();
 	myPlayerGbufferRender(m_myCameraManager, m_imguiPanel);
-
 	// render
 	myPlayerRender(m_myCameraManager, m_imguiPanel);
 
@@ -278,6 +278,13 @@ void paintGL(){
 	defaultRenderer->setProjection(godProjMat);
 	defaultRenderer->renderPass();
 	myGodGbufferRender(m_myCameraManager, m_imguiPanel);
+
+	// bind shadow map
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	ConfigureShaderAndMatrices();
+	myGodShadowRender(m_myCameraManager, m_imguiPanel);
+	// render
 	myGodRender(m_myCameraManager, m_imguiPanel);
 
 	

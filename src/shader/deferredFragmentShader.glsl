@@ -7,6 +7,7 @@ layout (location=0) uniform sampler2D gSpecular;
 layout (location=1) uniform sampler2D gNormal;
 layout (location=2) uniform sampler2D gDiffuse;
 layout (location=3) uniform sampler2D gPosition;
+layout (location=4) uniform sampler2D depthMap;
 
 //uniform sampler2D gView;
 
@@ -17,7 +18,10 @@ uniform int flag;
 
 
 void main()
-{             
+{            
+
+    float depthValue = texture(depthMap, TexCoords).r;
+    vec3 depth = vec3(depthValue);
     // retrieve data from gbuffer
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
     
@@ -51,7 +55,7 @@ void main()
 
 
     if (flag == 1) {
-        FragColor = vec4(tex, 1.0);
+        FragColor = vec4(depth, 1.0);
     } else if (flag == 2) {
         FragColor = vec4(N, 1.0);
     } else if (flag == 3) {

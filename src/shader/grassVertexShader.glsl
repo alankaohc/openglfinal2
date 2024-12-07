@@ -17,7 +17,7 @@ out vec3 f_view;
 uniform mat4 projMat;
 uniform mat4 viewMat;
 uniform mat4 modelMat;
-uniform mat4 lightSpaceMatrix;
+
 
 
 void main() {
