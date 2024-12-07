@@ -187,12 +187,16 @@ GLuint rockNormalLoc;
 GLint normalMappingEnabledLoc;
 
 // shadow mapping
-unsigned int depthMapFBO;
-unsigned int depthMap;
+
 MyShader* grassShadowShaderPointer;
 GLuint lightLoc;
-glm::mat4 lightSpaceMatrix;
 GLuint quadDepthMapLoc;
+GLuint depth_fbo;
+GLuint depth_tex;
+glm::vec3 light_position;
+glm::mat4 light_proj_matrix;
+glm::mat4 light_view_matrix;
+quadDepthLoc
 
 void renderQuad()
 {
@@ -748,22 +752,26 @@ void genTexture(int w, int h) {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+
 void genShadowMap(int w, int h) {
-	
-	glGenFramebuffers(1, &depthMapFBO);
-	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-	unsigned int SHADOW_WIDTH = w/2, SHADOW_HEIGHT = h;
-	glGenTextures(1, &depthMap);
-	glBindTexture(GL_TEXTURE_2D, depthMap);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
+	int DepthTexutre_Width = w / 2;
+	int DepthTexutre_Height = h;
+
+	glGenFramebuffers(1, &depth_fbo); //Create FBO
+	glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
+	glGenTextures(1, &depth_tex); //Create fboDataTexture
+	glBindTexture(GL_TEXTURE_2D, depth_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F,
+		DepthTexutre_Width, DepthTexutre_Height, 0,
+		GL_DEPTH_COMPONENT32F, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE,
+		GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_tex, 0);
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "Framebuffer not complete!" << std::endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1227,6 +1235,8 @@ void myPlayerGbufferRender(const INANOA::MyCameraManager* m_myCameraManager, MyI
 }
 
 void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+
+	
 	// myShader
 	grassShadowShaderPointer->use();
 	// bind VAO
@@ -1234,7 +1244,8 @@ void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel*
 	// bind draw-indirect-buffer
 	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, cmdBufferHandle);
 	// render
-	glUniformMatrix4fv(lightLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+	glm::mat4 light_vp_matrix = light_proj_matrix * light_view_matrix;
+	glUniformMatrix4fv(lightLoc, 1, GL_FALSE, glm::value_ptr(light_vp_matrix));
 	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, 5, sizeof(DrawElementsIndirectCommand));
 
 }
@@ -1337,6 +1348,13 @@ void myPlayerShadowRender(const INANOA::MyCameraManager* m_myCameraManager, MyIm
 
 void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 	
+	// z component also requires the bias because the default data
+	// range in depth map is[0, 1]
+	glm::mat4 tmp = glm::mat4(1.0);
+	glm::mat4 scale_bias_matrix = glm::translate(glm::mat4(1.0), glm::vec3(0.5f, 0.5f, 0.5f));
+	scale_bias_matrix = glm::scale(scale_bias_matrix, glm::vec3(0.5f, 0.5f, 0.5f));
+	glm::mat4 shadow_sbpv_matrix = scale_bias_matrix * light_proj_matrix * light_view_matrix;
+
 
 	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
 	glm::mat4 godViewMatrix = m_myCameraManager->godViewMatrix();
@@ -1346,6 +1364,7 @@ void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_img
 	// 2. render pass
 	glViewport(godViewPort[0], godViewPort[1], godViewPort[2], godViewPort[3]);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	deferredShaderPointer->use();
 
@@ -1358,14 +1377,16 @@ void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_img
 	glActiveTexture(GL_TEXTURE8);
 	glBindTexture(GL_TEXTURE_2D, gSpecular);
 	glActiveTexture(GL_TEXTURE9);
-	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glBindTexture(GL_TEXTURE_2D, depth_tex);
+	glUniformMatrix4fv(proj_matrix, 1, GL_FALSE, camera_proj_matrix);
+
 
 
 	glUniform1i(quadPosLoc, 5);
 	glUniform1i(quadNormalLoc, 6);
 	glUniform1i(quadAlbedoLoc, 7);
 	glUniform1i(quadSpecularLoc, 8);
-	glUniform1i(quadDepthMapLoc, 9);
+	glUniform1i(quadDepthLoc, 9);
 
 
 	glUniform1i(deferredFlagLoc, deferredFlag);
@@ -1402,12 +1423,11 @@ void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPan
 }
 
 void ConfigureShaderAndMatrices() {
-	float near_plane = 1.0f, far_plane = 1000.5f;
-	glm::mat4 lightProjection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, near_plane, far_plane);
-	glm::mat4 lightView = glm::lookAt(glm::vec3(-0.4, -0.5, -0.8),
-		                              glm::vec3( 0.0f, 0.0f,  0.0f),
-		                              glm::vec3( 0.0f, 1.0f,  0.0f));
-	lightSpaceMatrix = lightProjection * lightView;
+
+	glm::vec3 light_position = glm::vec3(0.4, 0.5, 0.8);
+	glm::mat4 light_proj_matrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.0f, 100.0f);
+	glm::mat4 light_view_matrix = glm::lookAt(light_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
 
 
 }

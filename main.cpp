@@ -280,9 +280,12 @@ void paintGL(){
 	myGodGbufferRender(m_myCameraManager, m_imguiPanel);
 
 	// bind shadow map
-	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-	glClear(GL_DEPTH_BUFFER_BIT);
 	ConfigureShaderAndMatrices();
+	glEnable(GL_DEPTH_TEST);
+	glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(4.0f, 4.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	myGodShadowRender(m_myCameraManager, m_imguiPanel);
 	// render
 	myGodRender(m_myCameraManager, m_imguiPanel);
