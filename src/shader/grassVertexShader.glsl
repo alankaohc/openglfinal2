@@ -29,7 +29,7 @@ void main() {
 	vec4 worldVertex = rotMat * modelMat * vec4(v_vertex, 1.0) + v_worldPosOffset ;
 	worldVertex.w = 1.0;
 
-	vec4 worldNormal = modelMat * vec4(v_normal, 0.0) ;
+	vec4 worldNormal = rotMat * modelMat * vec4(v_normal, 0.0) ;
 	
 	f_worldVertex = worldVertex.xyz ;
 	f_worldNormal = worldNormal.xyz ;

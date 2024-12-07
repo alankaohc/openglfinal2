@@ -267,7 +267,7 @@ void paintGL(){
 	// bind shadow map
 	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 	glClear(GL_DEPTH_BUFFER_BIT);
-	ConfigureShaderAndMatrices();
+	ConfigureShaderAndMatrices(m_myCameraManager);
 	myPlayerShadowRender(m_myCameraManager, m_imguiPanel);
 	// render
 	myPlayerRender(m_myCameraManager, m_imguiPanel);
@@ -286,7 +286,7 @@ void paintGL(){
 	// bind shadow map
 	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 	glClear(GL_DEPTH_BUFFER_BIT);
-	ConfigureShaderAndMatrices();
+	ConfigureShaderAndMatrices(m_myCameraManager);
 	myGodShadowRender(m_myCameraManager, m_imguiPanel);
 	// render
 	myGodRender(m_myCameraManager, m_imguiPanel);

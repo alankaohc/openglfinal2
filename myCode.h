@@ -1321,13 +1321,14 @@ void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPan
 
 }
 
-void ConfigureShaderAndMatrices() {
-	float near_plane = -400.0f, far_plane = 400.0f;
-	glm::mat4 lightProjection = glm::ortho(-400.0f, 400.0f, -400.0f, 400.0f, near_plane, far_plane);
-	glm::mat4 lightView = glm::lookAt(glm::vec3(4, 5, 8),
-		                              glm::vec3( 0.0f, 0.0f,  0.0f),
+void ConfigureShaderAndMatrices(INANOA::MyCameraManager* m_myCameraManager) {
+	glm::mat4 airplaneModelMat = m_myCameraManager->airplaneModelMatrix();
+	glm::vec4 planepositionVec4 = glm::vec4(0.0, 0.0, 0.0, 1.0);
+	glm::vec4 position = airplaneModelMat * planepositionVec4;
+	float near_plane = 1.0f, far_plane = 200.0f;
+	glm::mat4 lightProjection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, near_plane, far_plane);
+	glm::mat4 lightView = glm::lookAt(glm::vec3(0.4, 0.5, 0.8) + glm::vec3(position),
+		                              glm::vec3( 0.0f, 0.0f,  0.0f) + glm::vec3(position),
 		                              glm::vec3( 0.0f, 1.0f,  0.0f));
 	lightSpaceMatrix = lightProjection * lightView;
-
-
 }

@@ -14,7 +14,7 @@ layout (location=4) uniform sampler2D depthMap;
 uniform int flag;
 uniform mat4 lightSpaceMatrix;
 
-float ShadowCalculation(vec4 fragPosLightSpace)
+float ShadowCalculation(vec4 fragPosLightSpace, vec3 N, vec3 L)
 {
     // perform perspective divide
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
@@ -25,8 +25,10 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     // get depth of current fragment from light's perspective
     float currentDepth = projCoords.z;
     // check whether current frag pos is in shadow
-    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
 
+    float bias = max(0.05 * (1.0 - dot(N, L)), 0.005);  
+    float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0; 
+    
     return shadow;
 }  
 
@@ -40,8 +42,7 @@ void main()
     // retrieve data from gbuffer
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
     vec4 FragPosLightSpace = lightSpaceMatrix * vec4(FragPos, 1.0);
-    float shadow = ShadowCalculation(FragPosLightSpace);
-
+   
 
     // Blinn-Phong shading 
     vec3 Ia = vec3(0.2, 0.2, 0.2);
@@ -54,6 +55,9 @@ void main()
     vec3 V = vec3(10.0,10.0,10.0);
     vec3 H = normalize(L + V);
  
+    float shadow = ShadowCalculation(FragPosLightSpace, N, L);
+
+
     vec3 diffuse_albedo = texture(gDiffuse, TexCoords).rgb;
     vec3 specular_albedo = texture(gSpecular, TexCoords).rgb;
     float shininess_power = texture(gSpecular, TexCoords).a;
