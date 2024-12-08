@@ -20,5 +20,5 @@ void main() {
 	vec4 worldVertex = rotMat * vec4(v_vertex, 1.0) + v_worldPosOffset ;
 	worldVertex.w = 1.0;
 
-	gl_Position = worldVertex;
+	gl_Position = lightSpaceMatrix * worldVertex;
 }

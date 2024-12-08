@@ -198,8 +198,6 @@ void resizeGL(GLFWwindow *window, int w, int h){
 	// resize งน
 	glViewport(0, 0, w, h); 
 	genTexture(w, h);
-	genShadowMap(w, h);
-	
 }
 
 void paintGL(){
@@ -253,27 +251,10 @@ void paintGL(){
 	myUIinput(m_myCameraManager, m_imguiPanel);
 	// compute shader
 	myComputeRender(m_myCameraManager);
-	
-	// rendering with player view	
-	// bind gbuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	defaultRenderer->m_shaderProgram->useProgram();
-	defaultRenderer->setViewport(godViewport[0], godViewport[1], godViewport[2], godViewport[3]);
-	defaultRenderer->setView(playerVM);
-	defaultRenderer->setProjection(playerProjMat);
-	defaultRenderer->renderPass();
-	myPlayerGbufferRender(m_myCameraManager, m_imguiPanel);
-	// bind shadow map
-	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-	glClear(GL_DEPTH_BUFFER_BIT);
-	ConfigureShaderAndMatrices(m_myCameraManager);
-	myPlayerShadowRender(m_myCameraManager, m_imguiPanel);
-	// render
-	myPlayerRender(m_myCameraManager, m_imguiPanel);
 
-
-	// rendering with god view	
+	//////////////////////////////
+	// rendering with god view	//
+	//////////////////////////////
 	// bind gbuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -283,13 +264,30 @@ void paintGL(){
 	defaultRenderer->setProjection(godProjMat);
 	defaultRenderer->renderPass();
 	myGodGbufferRender(m_myCameraManager, m_imguiPanel);
-	// bind shadow map
-	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-	glClear(GL_DEPTH_BUFFER_BIT);
-	ConfigureShaderAndMatrices(m_myCameraManager);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	// shadow map
 	myGodShadowRender(m_myCameraManager, m_imguiPanel);
 	// render
 	myGodRender(m_myCameraManager, m_imguiPanel);
+	/////////////////////////////////
+	// rendering with player view  //
+	/////////////////////////////////	
+	// bind gbuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	defaultRenderer->m_shaderProgram->useProgram();
+	defaultRenderer->setViewport(godViewport[0], godViewport[1], godViewport[2], godViewport[3]);
+	defaultRenderer->setView(playerVM);
+	defaultRenderer->setProjection(playerProjMat);
+	defaultRenderer->renderPass();
+	myPlayerGbufferRender(m_myCameraManager, m_imguiPanel);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	// shadow map
+	myPlayerShadowRender(m_myCameraManager, m_imguiPanel);
+	// render
+	myPlayerRender(m_myCameraManager, m_imguiPanel);
+
+
 
 	
 

@@ -194,6 +194,17 @@ GLuint lightLoc;
 glm::mat4 lightSpaceMatrix;
 GLuint quadDepthMapLoc;
 
+
+// cascaded shadow map
+GLuint lightFBO;
+GLuint lightDepthMaps;
+int depthMapResolution = 4096;
+float cameraNearPlane = 1.0f;
+float cameraFarPlane = 500.0f;
+std::vector<float> shadowCascadeLevels{ 50.0, 200.0 }; // cameraFarPlane = 500.0
+unsigned int matricesUBO;
+glm::vec3 lightDir = glm::vec3(0.4, 0.5, 0.8);
+
 void renderQuad()
 {
 	if (quadVAO == 0)
@@ -748,28 +759,6 @@ void genTexture(int w, int h) {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void genShadowMap(int w, int h) {
-	
-	glGenFramebuffers(1, &depthMapFBO);
-	unsigned int SHADOW_WIDTH = w/2, SHADOW_HEIGHT = h;
-	glGenTextures(1, &depthMap);
-	glBindTexture(GL_TEXTURE_2D, depthMap);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	
-	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		std::cout << "Framebuffer not complete!" << std::endl;
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-
 void initialize() {
 	// prepare a SSBO for storing raw instance data
 	GLuint rawInstanceDataBufferHandle;
@@ -1027,6 +1016,54 @@ void setUniformVariables() {
 	
 }
 
+void genShadowMaps() {
+	glGenFramebuffers(1, &lightFBO);
+
+	glGenTextures(1, &lightDepthMaps);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
+	glTexImage3D(
+		GL_TEXTURE_2D_ARRAY,
+		0,
+		GL_DEPTH_COMPONENT32F,
+		depthMapResolution,
+		depthMapResolution,
+		int(shadowCascadeLevels.size()) + 1,
+		0,
+		GL_DEPTH_COMPONENT,
+		GL_FLOAT,
+		nullptr);
+
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+	constexpr float bordercolor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, bordercolor);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, lightDepthMaps, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+
+	int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE)
+	{
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!";
+		throw 0;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void configureUBO() {
+	// configure UBO
+	glGenBuffers(1, &matricesUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4x4) * 16, nullptr, GL_STATIC_DRAW);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, matricesUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
 void myInit() {
 	loadmodel("assets/bush05_lod2.obj", 0);
 	loadmodel("assets/Medieval_Building_LowPoly/medieval_building_lowpoly_1.obj", 1);
@@ -1040,20 +1077,27 @@ void myInit() {
 	loadPlaneModel();
 	loadPlaneTexture();
 
-
 	myShaderPointer = new MyShader("src/shader/grassVertexShader.glsl", "src/shader/grassFragmentShader.glsl");
 	rockShaderPointer = new MyShader("src/shader/rockVertexShader.glsl", "src/shader/rockFragmentShader.glsl");
 	planeShaderPointer = new MyShader("src/shader/planeVertexShader.glsl", "src/shader/planeFragmentShader.glsl");
 	myCompShaderPointer = new MyComputeShader("src/shader/myComputeShader.glsl");
 	myResetCompShaderPointer = new MyComputeShader("src/shader/myResetComputeShader.glsl");
 	deferredShaderPointer = new MyShader("src/shader/deferredVertexShader.glsl", "src/shader/deferredFragmentShader.glsl");
-	grassShadowShaderPointer = new MyShader("src/shader/grassShadowVertexShader.glsl", "src/shader/emptyFragmentShader.glsl");
+	grassShadowShaderPointer = new MyShader("src/shader/grassShadowVertexShader.glsl",
+		                                    "src/shader/emptyFragmentShader.glsl",
+		                                    "src/shader/grassShadowGeometryShader.glsl");
+		                                    
+	//grassShadowShaderPointer = new MyShader("src/shader/grassShadowVertexShader.glsl", "src/shader/emptyFragmentShader.glsl");
+
 
 	initSample();
 	initialize();
 	genTexture(1024, 512);
-	genShadowMap(1024, 512);
 	setUniformVariables();
+
+	// shadow map
+	genShadowMaps();
+	configureUBO();
 }
 
 void myComputeRender(const INANOA::MyCameraManager* m_myCameraManager) {
@@ -1164,7 +1208,6 @@ void myPlayerGbufferRender(const INANOA::MyCameraManager* m_myCameraManager, MyI
 	glm::vec4 godViewPort = m_myCameraManager->godViewport();
 	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
 
-
 	glm::mat4 model_matrix = glm::mat4(1.0);
 	glm::vec4 positionVec4 = glm::vec4(25.92, 18.27, 11.75, 1.0);
 	const glm::mat4 airplaneModelMat = m_myCameraManager->airplaneModelMatrix();
@@ -1222,104 +1265,8 @@ void myPlayerGbufferRender(const INANOA::MyCameraManager* m_myCameraManager, MyI
 	glBindVertexArray(planeVaoHandle);
 
 	glDrawElements(GL_TRIANGLES, planeVertexCount, GL_UNSIGNED_INT, 0);
-
-
-	
 }
 
-void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
-	// myShader
-	grassShadowShaderPointer->use();
-	// bind VAO
-	glBindVertexArray(vaoHandle);
-	// bind draw-indirect-buffer
-	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, cmdBufferHandle);
-	// render
-	glUniformMatrix4fv(lightLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
-	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, 5, sizeof(DrawElementsIndirectCommand));
-
-}
-
-void myPlayerShadowRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
-	grassShadowShaderPointer->use();
-	// bind VAO
-	glBindVertexArray(vaoHandle);
-	// bind draw-indirect-buffer
-	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, cmdBufferHandle);
-	// render
-	glUniformMatrix4fv(lightLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
-	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, 5, sizeof(DrawElementsIndirectCommand));
-
-}
-
-void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
-	
-
-	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
-	glm::mat4 godViewMatrix = m_myCameraManager->godViewMatrix();
-	glm::vec4 godViewPort = m_myCameraManager->godViewport();
-	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
-
-	// 2. render pass
-	glViewport(godViewPort[0], godViewPort[1], godViewPort[2], godViewPort[3]);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
-
-	deferredShaderPointer->use();
-
-	glActiveTexture(GL_TEXTURE5);
-	glBindTexture(GL_TEXTURE_2D, gPosition);
-	glActiveTexture(GL_TEXTURE6);
-	glBindTexture(GL_TEXTURE_2D, gNormal);
-	glActiveTexture(GL_TEXTURE7);
-	glBindTexture(GL_TEXTURE_2D, gDiffuse);
-	glActiveTexture(GL_TEXTURE8);
-	glBindTexture(GL_TEXTURE_2D, gSpecular);
-	glActiveTexture(GL_TEXTURE9);
-	glBindTexture(GL_TEXTURE_2D, depthMap);
-
-
-	glUniform1i(quadPosLoc, 5);
-	glUniform1i(quadNormalLoc, 6);
-	glUniform1i(quadAlbedoLoc, 7);
-	glUniform1i(quadSpecularLoc, 8);
-	glUniform1i(quadDepthMapLoc, 9);
-
-
-	glUniform1i(deferredFlagLoc, deferredFlag);
-
-	glUniformMatrix4fv(glGetUniformLocation(deferredShaderPointer->ID, "lightSpaceMatrix"), 
-	1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
-
-	renderQuad();
-}
-
-void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
-	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
-	// 2. render pass
-	glViewport(playerViewPort[0], playerViewPort[1], playerViewPort[2], playerViewPort[3]);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
-
-	deferredShaderPointer->use();
-
-	glActiveTexture(GL_TEXTURE5);
-	glBindTexture(GL_TEXTURE_2D, gPosition);
-	glActiveTexture(GL_TEXTURE6);
-	glBindTexture(GL_TEXTURE_2D, gNormal);
-	glActiveTexture(GL_TEXTURE7);
-	glBindTexture(GL_TEXTURE_2D, gDiffuse);
-	glActiveTexture(GL_TEXTURE8);
-	glBindTexture(GL_TEXTURE_2D, gSpecular);
-
-	glUniform1i(quadPosLoc, 5);
-	glUniform1i(quadNormalLoc, 6);
-	glUniform1i(quadAlbedoLoc, 7);
-	glUniform1i(quadSpecularLoc, 8);
-
-	glUniform1i(deferredFlagLoc, deferredFlag);
-
-	renderQuad();
-
-}
 
 void ConfigureShaderAndMatrices(INANOA::MyCameraManager* m_myCameraManager) {
 	glm::mat4 airplaneModelMat = m_myCameraManager->airplaneModelMatrix();
@@ -1328,7 +1275,293 @@ void ConfigureShaderAndMatrices(INANOA::MyCameraManager* m_myCameraManager) {
 	float near_plane = 1.0f, far_plane = 200.0f;
 	glm::mat4 lightProjection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, near_plane, far_plane);
 	glm::mat4 lightView = glm::lookAt(glm::vec3(0.4, 0.5, 0.8) + glm::vec3(position),
-		                              glm::vec3( 0.0f, 0.0f,  0.0f) + glm::vec3(position),
-		                              glm::vec3( 0.0f, 1.0f,  0.0f));
+		glm::vec3(0.0f, 0.0f, 0.0f) + glm::vec3(position),
+		glm::vec3(0.0f, 1.0f, 0.0f));
 	lightSpaceMatrix = lightProjection * lightView;
 }
+
+std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview)
+{
+	const auto inv = glm::inverse(projview);
+
+	std::vector<glm::vec4> frustumCorners;
+	for (unsigned int x = 0; x < 2; ++x)
+	{
+		for (unsigned int y = 0; y < 2; ++y)
+		{
+			for (unsigned int z = 0; z < 2; ++z)
+			{
+				const glm::vec4 pt = inv * glm::vec4(2.0f * x - 1.0f, 2.0f * y - 1.0f, 2.0f * z - 1.0f, 1.0f);
+				frustumCorners.push_back(pt / pt.w);
+			}
+		}
+	}
+
+	return frustumCorners;
+}
+
+std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& proj, const glm::mat4& view)
+{
+	return getFrustumCornersWorldSpace(proj * view);
+}
+
+glm::mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane, INANOA::MyCameraManager* m_myCameraManager)
+{
+	//const auto proj = glm::perspective(
+	//	glm::radians(camera.Zoom), (float)fb_width / (float)fb_height, nearPlane,
+	//	farPlane);
+	//const auto corners = getFrustumCornersWorldSpace(proj, camera.GetViewMatrix());
+	glm::mat4 proj = m_myCameraManager->playerProjectionMatrix();
+	glm::mat4 view = m_myCameraManager->playerViewMatrix();
+	glm::vec3 lightDir = glm::vec3(0.4, 0.5, 0.8);
+	const auto corners = getFrustumCornersWorldSpace(proj, view);
+	glm::vec3 center = glm::vec3(0, 0, 0);
+	for (const auto& v : corners)
+	{
+		center += glm::vec3(v);
+	}
+	center /= corners.size();
+
+	const auto lightView = glm::lookAt(center + lightDir, center, glm::vec3(0.0f, 1.0f, 0.0f));
+
+	float minX = std::numeric_limits<float>::max();
+	float maxX = std::numeric_limits<float>::lowest();
+	float minY = std::numeric_limits<float>::max();
+	float maxY = std::numeric_limits<float>::lowest();
+	float minZ = std::numeric_limits<float>::max();
+	float maxZ = std::numeric_limits<float>::lowest();
+	
+	for (const auto& v : corners)
+	{
+		const auto trf = lightView * v;
+		minX = std::min(minX, trf.x);
+		maxX = std::max(maxX, trf.x);
+		minY = std::min(minY, trf.y);
+		maxY = std::max(maxY, trf.y);
+		minZ = std::min(minZ, trf.z);
+		maxZ = std::max(maxZ, trf.z);
+	}
+	//std::cout << "minX: " << minX << std::endl;
+	//std::cout << "maxX: " << maxX << std::endl;
+	//std::cout << "minY: " << minY << std::endl;
+	//std::cout << "maxY: " << maxY << std::endl;
+	//std::cout << "minZ: " << minZ << std::endl;
+	//std::cout << "maxZ: " << maxZ << std::endl;
+
+	// Tune this parameter according to the scene
+	constexpr float zMult = 10.0f;
+	if (minZ < 0)
+	{
+		minZ *= zMult;
+	}
+	else
+	{
+		minZ /= zMult;
+	}
+	if (maxZ < 0)
+	{
+		maxZ /= zMult;
+	}
+	else
+	{
+		maxZ *= zMult;
+	}
+
+	const glm::mat4 lightProjection = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);
+	return lightProjection * lightView;
+}
+
+std::vector<glm::mat4> getLightSpaceMatrices(INANOA::MyCameraManager* m_myCameraManager)
+{
+	std::vector<glm::mat4> ret;
+	for (size_t i = 0; i < shadowCascadeLevels.size() + 1; ++i)
+	{
+		if (i == 0)
+		{
+			ret.push_back(getLightSpaceMatrix(cameraNearPlane, shadowCascadeLevels[i], m_myCameraManager));
+		}
+		else if (i < shadowCascadeLevels.size())
+		{
+			ret.push_back(getLightSpaceMatrix(shadowCascadeLevels[i - 1], shadowCascadeLevels[i], m_myCameraManager));
+		}
+		else
+		{
+			ret.push_back(getLightSpaceMatrix(shadowCascadeLevels[i - 1], cameraFarPlane, m_myCameraManager));
+		}
+	}
+	return ret;
+}
+
+void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+	// 0. UBO setup
+	const auto lightMatrices = getLightSpaceMatrices(m_myCameraManager);
+	glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
+	for (size_t i = 0; i < lightMatrices.size(); ++i)
+	{
+		glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(glm::mat4x4), sizeof(glm::mat4x4), &lightMatrices[i]);
+	}
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	
+	// 1. render depth of scene to texture (from light's perspective)
+	// --------------------------------------------------------------
+	//lightProjection = glm::perspective(glm::radians(45.0f), (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene
+	// render scene from light's point of view
+	
+	grassShadowShaderPointer->use();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
+	glViewport(0, 0, depthMapResolution, depthMapResolution);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glCullFace(GL_FRONT);  // peter panning
+	// start render 
+	glBindVertexArray(vaoHandle);
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, cmdBufferHandle);
+	glUniformMatrix4fv(lightLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, 5, sizeof(DrawElementsIndirectCommand));
+	// end render
+	glCullFace(GL_BACK);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// reset viewport 應該不用，之後render 前會改
+	//glViewport(0, 0, fb_width, fb_height);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+}
+
+void myPlayerShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+
+	// 0. UBO setup
+	const auto lightMatrices = getLightSpaceMatrices(m_myCameraManager);
+	glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
+	for (size_t i = 0; i < lightMatrices.size(); ++i)
+	{
+		glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(glm::mat4x4), sizeof(glm::mat4x4), &lightMatrices[i]);
+	}
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	// 1. render depth of scene to texture (from light's perspective)
+	// --------------------------------------------------------------
+	//lightProjection = glm::perspective(glm::radians(45.0f), (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene
+	// render scene from light's point of view
+
+	grassShadowShaderPointer->use();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
+	glViewport(0, 0, depthMapResolution, depthMapResolution);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glCullFace(GL_FRONT);  // peter panning
+	// start render 
+	glBindVertexArray(vaoHandle);
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, cmdBufferHandle);
+	glUniformMatrix4fv(lightLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, 5, sizeof(DrawElementsIndirectCommand));
+	// end render
+	glCullFace(GL_BACK);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// reset viewport 應該不用，之後render 前會改
+	//glViewport(0, 0, fb_width, fb_height);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
+	glm::mat4 godViewMatrix = m_myCameraManager->godViewMatrix();
+	glm::vec4 godViewPort = m_myCameraManager->godViewport();
+	glm::mat4 playerProjectionMatrix = m_myCameraManager->playerProjectionMatrix();
+	glm::mat4 playerViewMatrix = m_myCameraManager->playerViewMatrix();
+	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
+	
+	// 2. render scene as normal using the generated depth/shadow map  
+	glViewport(godViewPort[0], godViewPort[1], godViewPort[2], godViewPort[3]);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
+	glClear(GL_DEPTH_BUFFER_BIT);
+	deferredShaderPointer->use();
+
+	const glm::mat4 projection = playerProjectionMatrix;  // 應該是給 player view 的
+	const glm::mat4 view = playerViewMatrix;
+	deferredShaderPointer->setMat4("projection", projection);
+	deferredShaderPointer->setMat4("view", projection);
+
+	// set light uniforms
+	deferredShaderPointer->setVec3("viewPos", m_myCameraManager->playerViewOrig());
+	deferredShaderPointer->setVec3("lightDir", lightDir);
+	deferredShaderPointer->setFloat("farPlane", cameraFarPlane);
+	deferredShaderPointer->setInt("cascadeCount", shadowCascadeLevels.size());
+	for (size_t i = 0; i < shadowCascadeLevels.size(); ++i)
+	{
+		deferredShaderPointer->setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
+	}
+
+	// 原本的 G buffer
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, gPosition);
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, gNormal);
+	glActiveTexture(GL_TEXTURE7);
+	glBindTexture(GL_TEXTURE_2D, gDiffuse);
+	glActiveTexture(GL_TEXTURE8);
+	glBindTexture(GL_TEXTURE_2D, gSpecular);
+	glActiveTexture(GL_TEXTURE10);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
+
+	glUniform1i(quadPosLoc, 5);
+	glUniform1i(quadNormalLoc, 6);
+	glUniform1i(quadAlbedoLoc, 7);
+	glUniform1i(quadSpecularLoc, 8);
+	deferredShaderPointer->setInt("shadowMap", 10);
+	glUniform1i(deferredFlagLoc, deferredFlag);
+	renderQuad();
+}
+void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
+	glm::mat4 godViewMatrix = m_myCameraManager->godViewMatrix();
+	glm::vec4 godViewPort = m_myCameraManager->godViewport();
+	glm::mat4 playerProjectionMatrix = m_myCameraManager->playerProjectionMatrix();
+	glm::mat4 playerViewMatrix = m_myCameraManager->playerViewMatrix();
+	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
+
+	// 2. render scene as normal using the generated depth/shadow map
+	glViewport(playerViewPort[0], playerViewPort[1], playerViewPort[2], playerViewPort[3]);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
+	glClear(GL_DEPTH_BUFFER_BIT);
+	deferredShaderPointer->use();
+
+	const glm::mat4 projection = playerProjectionMatrix;  // 應該是給 player view 的
+	const glm::mat4 view = playerViewMatrix;
+	deferredShaderPointer->setMat4("projection", projection);
+	deferredShaderPointer->setMat4("view", projection);
+
+	// set light uniforms
+	deferredShaderPointer->setVec3("viewPos", m_myCameraManager->playerViewOrig());
+	deferredShaderPointer->setVec3("lightDir", lightDir);
+	deferredShaderPointer->setFloat("farPlane", cameraFarPlane);
+	deferredShaderPointer->setInt("cascadeCount", shadowCascadeLevels.size());
+	for (size_t i = 0; i < shadowCascadeLevels.size(); ++i)
+	{
+		deferredShaderPointer->setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
+	}
+
+	// 原本的 G buffer
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, gPosition);
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, gNormal);
+	glActiveTexture(GL_TEXTURE7);
+	glBindTexture(GL_TEXTURE_2D, gDiffuse);
+	glActiveTexture(GL_TEXTURE8);
+	glBindTexture(GL_TEXTURE_2D, gSpecular);
+	glActiveTexture(GL_TEXTURE10);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
+
+	glUniform1i(quadPosLoc, 5);
+	glUniform1i(quadNormalLoc, 6);
+	glUniform1i(quadAlbedoLoc, 7);
+	glUniform1i(quadSpecularLoc, 8);
+	deferredShaderPointer->setInt("shadowMap", 10);
+	glUniform1i(deferredFlagLoc, deferredFlag);
+	renderQuad();
+
+}
+
