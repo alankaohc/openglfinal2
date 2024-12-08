@@ -20,7 +20,7 @@ layout (location = 3) out vec3 gPosition;
 void main()
 {
 	vec4 texel = texture(albedoTextureArray, f_uv) ;
-	if(texel.a < 0.5){
+	if(false){
 		discard ;
 	}
 	// store the fragment position vector in the first gbuffer texture

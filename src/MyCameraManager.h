@@ -81,7 +81,8 @@ private:
 
 	glm::ivec4 m_godViewport;
 	glm::ivec4 m_playerViewport;
-
+public:
+	const glm::ivec4 getPlayerViewport() { return m_playerViewport; }
 private:
 	bool m_WPressedFlag = false;
 	bool m_APressedFlag = false;

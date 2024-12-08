@@ -1283,7 +1283,7 @@ void ConfigureShaderAndMatrices(INANOA::MyCameraManager* m_myCameraManager) {
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview)
 {
 	const auto inv = glm::inverse(projview);
-
+	
 	std::vector<glm::vec4> frustumCorners;
 	for (unsigned int x = 0; x < 2; ++x)
 	{
@@ -1302,17 +1302,24 @@ std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview)
 
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& proj, const glm::mat4& view)
 {
-	return getFrustumCornersWorldSpace(proj * view);
+	glm::mat4 tmp = proj * view;
+	return getFrustumCornersWorldSpace(tmp);
 }
 
 glm::mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane, INANOA::MyCameraManager* m_myCameraManager)
 {
-	//const auto proj = glm::perspective(
-	//	glm::radians(camera.Zoom), (float)fb_width / (float)fb_height, nearPlane,
-	//	farPlane);
-	//const auto corners = getFrustumCornersWorldSpace(proj, camera.GetViewMatrix());
-	glm::mat4 proj = m_myCameraManager->playerProjectionMatrix();
+	float w = m_myCameraManager->getPlayerViewport()[2];
+	float h = m_myCameraManager->getPlayerViewport()[3];
+	const auto proj = glm::perspective(glm::radians(45.0f), w / h, nearPlane, farPlane);
 	glm::mat4 view = m_myCameraManager->playerViewMatrix();
+	
+	
+	std::cout << "i=" << std::endl;
+	std::cout << proj[0][0] << ", " << proj[1][0] << ", " << proj[2][0] << ", " << proj[3][0] << std::endl;
+	std::cout << proj[0][1] << ", " << proj[1][1] << ", " << proj[2][1] << ", " << proj[3][1] << std::endl;
+	std::cout << proj[0][2] << ", " << proj[1][2] << ", " << proj[2][2] << ", " << proj[3][2] << std::endl;
+	std::cout << proj[0][3] << ", " << proj[1][3] << ", " << proj[2][3] << ", " << proj[3][3] << std::endl;
+		
 	glm::vec3 lightDir = glm::vec3(0.4, 0.5, 0.8);
 	const auto corners = getFrustumCornersWorldSpace(proj, view);
 	glm::vec3 center = glm::vec3(0, 0, 0);
@@ -1370,6 +1377,7 @@ glm::mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane, INANO
 	const glm::mat4 lightProjection = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);
 	return lightProjection * lightView;
 }
+bool tmp2 = true;
 
 std::vector<glm::mat4> getLightSpaceMatrices(INANOA::MyCameraManager* m_myCameraManager)
 {
@@ -1389,12 +1397,43 @@ std::vector<glm::mat4> getLightSpaceMatrices(INANOA::MyCameraManager* m_myCamera
 			ret.push_back(getLightSpaceMatrix(shadowCascadeLevels[i - 1], cameraFarPlane, m_myCameraManager));
 		}
 	}
+	//if (tmp2) {
+	//	for (int i = 0; i < ret.size(); i++) {
+	//		std::cout << "i=" << i << std::endl;
+	//		std::cout << ret[i][0][0] << ", " << ret[i][1][0] << ", " << ret[i][2][0] << ", " << ret[i][3][0] << std::endl;
+	//		std::cout << ret[i][0][1] << ", " << ret[i][1][1] << ", " << ret[i][2][1] << ", " << ret[i][3][1] << std::endl;
+	//		std::cout << ret[i][0][2] << ", " << ret[i][1][2] << ", " << ret[i][2][2] << ", " << ret[i][3][2] << std::endl;
+	//		std::cout << ret[i][0][3] << ", " << ret[i][1][3] << ", " << ret[i][2][3] << ", " << ret[i][3][3] << std::endl;
+	//	}
+	//	//tmp2 = false;
+	//}
+	
 	return ret;
 }
-
+bool tmp = true;
+std::vector<glm::mat4> godLightMatrices;
 void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 	// 0. UBO setup
 	const auto lightMatrices = getLightSpaceMatrices(m_myCameraManager);
+	godLightMatrices = lightMatrices; // visualization
+
+	if (tmp) {
+		for (int i = 0; i < lightMatrices.size(); ++i)
+		{
+
+			auto corners = getFrustumCornersWorldSpace(lightMatrices[i]);
+			std::cout << "i=" << i << std::endl;
+			std::cout << lightMatrices[i][0].z << std::endl;
+			
+			//for (int j = 0; j < corners.size(); j++) {
+			//	std::cout << "(" << corners[j].x << ", " << corners[j].y << ", " << corners[j].z << ")" << std::endl;
+			//}
+		}
+		tmp = false;
+	}
+	
+
+
 	glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
 	for (size_t i = 0; i < lightMatrices.size(); ++i)
 	{
@@ -1427,11 +1466,27 @@ void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel*
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 }
+
+std::vector<glm::mat4> playerLightMatrices;
 
 void myPlayerShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
-
 	// 0. UBO setup
 	const auto lightMatrices = getLightSpaceMatrices(m_myCameraManager);
+	playerLightMatrices = lightMatrices; // visualization
+
+	//// debug start
+	//if (tmp) {
+	//	for (int i = 0; i < lightMatrices.size(); ++i)
+	//	{
+	//		const auto corners = getFrustumCornersWorldSpace(lightMatrices[i]);
+	//		std::cout << "i=" << i << std::endl;
+	//		for (int j = 0; j < corners.size(); j++) {
+	//			std::cout << "(" << corners[j].x << ", " << corners[j].y << ", " << corners[j].z << ")" << std::endl;
+	//		}
+	//	}
+	//	tmp = false;
+	//}
+	// debug end
 	glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
 	for (size_t i = 0; i < lightMatrices.size(); ++i)
 	{
@@ -1463,6 +1518,7 @@ void myPlayerShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPan
 	//glViewport(0, 0, fb_width, fb_height);
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
+
 
 void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
@@ -1472,6 +1528,14 @@ void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_img
 	glm::mat4 playerViewMatrix = m_myCameraManager->playerViewMatrix();
 	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
 	
+	// debug start
+
+
+		
+
+
+
+
 	// 2. render scene as normal using the generated depth/shadow map  
 	glViewport(godViewPort[0], godViewPort[1], godViewPort[2], godViewPort[3]);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
@@ -1481,7 +1545,7 @@ void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_img
 	const glm::mat4 projection = playerProjectionMatrix;  // 應該是給 player view 的
 	const glm::mat4 view = playerViewMatrix;
 	deferredShaderPointer->setMat4("projection", projection);
-	deferredShaderPointer->setMat4("view", projection);
+	deferredShaderPointer->setMat4("view", view);
 
 	// set light uniforms
 	deferredShaderPointer->setVec3("viewPos", m_myCameraManager->playerViewOrig());
@@ -1492,6 +1556,9 @@ void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_img
 	{
 		deferredShaderPointer->setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
 	}
+
+	// set visualization corners 
+	
 
 	// 原本的 G buffer
 	glActiveTexture(GL_TEXTURE5);
@@ -1531,7 +1598,7 @@ void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPan
 	const glm::mat4 projection = playerProjectionMatrix;  // 應該是給 player view 的
 	const glm::mat4 view = playerViewMatrix;
 	deferredShaderPointer->setMat4("projection", projection);
-	deferredShaderPointer->setMat4("view", projection);
+	deferredShaderPointer->setMat4("view", view);
 
 	// set light uniforms
 	deferredShaderPointer->setVec3("viewPos", m_myCameraManager->playerViewOrig());
