@@ -9,7 +9,7 @@ layout(location=5) in vec4 v_col1;
 layout(location=6) in vec4 v_col2; 
 layout(location=7) in vec4 v_col3;  
 
-uniform mat4 lightSpaceMatrix;
+
 
 void main() {
 	mat4 rotMat;

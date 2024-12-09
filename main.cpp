@@ -266,9 +266,10 @@ void paintGL(){
 	myGodGbufferRender(m_myCameraManager, m_imguiPanel);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	// shadow map
-	myGodShadowRender(m_myCameraManager, m_imguiPanel);
+	//myGodShadowRender(m_myCameraManager, m_imguiPanel);
 	// render
 	myGodRender(m_myCameraManager, m_imguiPanel);
+
 	/////////////////////////////////
 	// rendering with player view  //
 	/////////////////////////////////	

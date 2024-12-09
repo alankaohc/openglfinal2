@@ -142,7 +142,7 @@ void main()
     // calculate shadow
     float shadow = ShadowCalculation(FragPos, view, N);   
     
-    vec3 lighting = Ia*ambient + (1.0 - shadow*1.2) * (Id*diffuse + Is*specular);
+    vec3 lighting = Ia*ambient + (1.0 - shadow*2.0) * (Id*diffuse + Is*specular);
     
 
 
