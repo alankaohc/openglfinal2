@@ -205,6 +205,9 @@ std::vector<float> shadowCascadeLevels{ 50.0, 200.0 }; // cameraFarPlane = 500.0
 unsigned int matricesUBO;
 glm::vec3 lightDir = glm::vec3(0.4, 0.5, 0.8);
 
+
+MyShader* debugCascadeShaderPointer;
+
 void renderQuad()
 {
 	if (quadVAO == 0)
@@ -1086,7 +1089,7 @@ void myInit() {
 	grassShadowShaderPointer = new MyShader("src/shader/grassShadowVertexShader.glsl",
 		                                    "src/shader/emptyFragmentShader.glsl",
 		                                    "src/shader/grassShadowGeometryShader.glsl");
-		                                    
+	debugCascadeShaderPointer = new MyShader("src/shader/debugCascadeVertexShader.glsl", "src/shader/debugCascadeFragmentShader.glsl");
 	//grassShadowShaderPointer = new MyShader("src/shader/grassShadowVertexShader.glsl", "src/shader/emptyFragmentShader.glsl");
 
 
@@ -1268,6 +1271,8 @@ void myPlayerGbufferRender(const INANOA::MyCameraManager* m_myCameraManager, MyI
 }
 
 
+
+
 void ConfigureShaderAndMatrices(INANOA::MyCameraManager* m_myCameraManager) {
 	glm::mat4 airplaneModelMat = m_myCameraManager->airplaneModelMatrix();
 	glm::vec4 planepositionVec4 = glm::vec4(0.0, 0.0, 0.0, 1.0);
@@ -1314,11 +1319,11 @@ glm::mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane, INANO
 	glm::mat4 view = m_myCameraManager->playerViewMatrix();
 	
 	
-	std::cout << "i=" << std::endl;
+	/*std::cout << "i=" << std::endl;
 	std::cout << proj[0][0] << ", " << proj[1][0] << ", " << proj[2][0] << ", " << proj[3][0] << std::endl;
 	std::cout << proj[0][1] << ", " << proj[1][1] << ", " << proj[2][1] << ", " << proj[3][1] << std::endl;
 	std::cout << proj[0][2] << ", " << proj[1][2] << ", " << proj[2][2] << ", " << proj[3][2] << std::endl;
-	std::cout << proj[0][3] << ", " << proj[1][3] << ", " << proj[2][3] << ", " << proj[3][3] << std::endl;
+	std::cout << proj[0][3] << ", " << proj[1][3] << ", " << proj[2][3] << ", " << proj[3][3] << std::endl;*/
 		
 	glm::vec3 lightDir = glm::vec3(0.4, 0.5, 0.8);
 	const auto corners = getFrustumCornersWorldSpace(proj, view);
@@ -1374,10 +1379,12 @@ glm::mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane, INANO
 		maxZ *= zMult;
 	}
 
+
+
 	const glm::mat4 lightProjection = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);
 	return lightProjection * lightView;
 }
-bool tmp2 = true;
+
 
 std::vector<glm::mat4> getLightSpaceMatrices(INANOA::MyCameraManager* m_myCameraManager)
 {
@@ -1410,6 +1417,95 @@ std::vector<glm::mat4> getLightSpaceMatrices(INANOA::MyCameraManager* m_myCamera
 	
 	return ret;
 }
+
+
+
+std::vector<GLuint> visualizerVAOs;
+std::vector<GLuint> visualizerVBOs;
+std::vector<GLuint> visualizerEBOs;
+bool tmp3 = true;
+void drawCascadeVolumeVisualizers(const std::vector<glm::mat4>& lightMatrices, MyShader* shader)
+{
+	// debug start
+	if (tmp3) {
+		for (int i = 0; i < lightMatrices.size(); ++i)
+		{
+			const auto corners = getFrustumCornersWorldSpace(lightMatrices[i]);
+			std::cout << "i=" << i << std::endl;
+			for (int j = 0; j < corners.size(); j++) {
+				std::cout << "(" << corners[j].x << ", " << corners[j].y << ", " << corners[j].z << ", " << corners[j].w << ")" << std::endl;
+			}
+		}
+		tmp3 = false;
+	}
+	// debug end
+
+	visualizerVAOs.resize(8);
+	visualizerEBOs.resize(8);
+	visualizerVBOs.resize(8);
+
+	const GLuint indices[] = {
+		0, 2, 3,
+		0, 3, 1,
+		4, 6, 2,
+		4, 2, 0,
+		5, 7, 6,
+		5, 6, 4,
+		1, 3, 7,
+		1, 7, 5,
+		6, 7, 3,
+		6, 3, 2,
+		1, 5, 4,
+		0, 1, 4
+	};
+
+	const glm::vec4 colors[] = {
+		{1.0, 0.0, 0.0, 0.5f},
+		{0.0, 1.0, 0.0, 0.5f},
+		{0.0, 0.0, 1.0, 0.5f},
+	};
+
+	for (int i = 0; i < lightMatrices.size(); ++i)
+	{
+		const auto corners = getFrustumCornersWorldSpace(lightMatrices[i]);
+		std::vector<glm::vec3> vec3s;
+		for (const auto& v : corners)
+		{
+			vec3s.push_back(glm::vec3(v));
+		}
+
+		glGenVertexArrays(1, &visualizerVAOs[i]);
+		glGenBuffers(1, &visualizerVBOs[i]);
+		glGenBuffers(1, &visualizerEBOs[i]);
+
+		glBindVertexArray(visualizerVAOs[i]);
+
+		glBindBuffer(GL_ARRAY_BUFFER, visualizerVBOs[i]);
+		glBufferData(GL_ARRAY_BUFFER, vec3s.size() * sizeof(glm::vec3), &vec3s[0], GL_STATIC_DRAW);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, visualizerEBOs[i]);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 36 * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
+
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+
+		glBindVertexArray(visualizerVAOs[i]);
+		shader->setVec4("color", colors[i % 3]);
+		glDrawElements(GL_TRIANGLES, GLsizei(36), GL_UNSIGNED_INT, 0);
+
+		glDeleteBuffers(1, &visualizerVBOs[i]);
+		glDeleteBuffers(1, &visualizerEBOs[i]);
+		glDeleteVertexArrays(1, &visualizerVAOs[i]);
+
+		glBindVertexArray(0);
+	}
+
+	visualizerVAOs.clear();
+	visualizerEBOs.clear();
+	visualizerVBOs.clear();
+}
+
+
 bool tmp = true;
 std::vector<glm::mat4> godLightMatrices;
 void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
@@ -1417,20 +1513,20 @@ void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel*
 	const auto lightMatrices = getLightSpaceMatrices(m_myCameraManager);
 	godLightMatrices = lightMatrices; // visualization
 
-	if (tmp) {
-		for (int i = 0; i < lightMatrices.size(); ++i)
-		{
+	//if (tmp) {
+	//	for (int i = 0; i < lightMatrices.size(); ++i)
+	//	{
 
-			auto corners = getFrustumCornersWorldSpace(lightMatrices[i]);
-			std::cout << "i=" << i << std::endl;
-			std::cout << lightMatrices[i][0].z << std::endl;
-			
-			//for (int j = 0; j < corners.size(); j++) {
-			//	std::cout << "(" << corners[j].x << ", " << corners[j].y << ", " << corners[j].z << ")" << std::endl;
-			//}
-		}
-		tmp = false;
-	}
+	//		auto corners = getFrustumCornersWorldSpace(lightMatrices[i]);
+	//		std::cout << "i=" << i << std::endl;
+	//		std::cout << lightMatrices[i][0].z << std::endl;
+	//		
+	//		//for (int j = 0; j < corners.size(); j++) {
+	//		//	std::cout << "(" << corners[j].x << ", " << corners[j].y << ", " << corners[j].z << ")" << std::endl;
+	//		//}
+	//	}
+	//	tmp = false;
+	//}
 	
 
 
@@ -1464,7 +1560,17 @@ void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel*
 	// reset viewport 應該不用，之後render 前會改
 	//glViewport(0, 0, fb_width, fb_height);
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+	/*glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+	if (lightMatrices.size() != 0)
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		debugCascadeShaderPointer->use();
+		debugCascadeShaderPointer->setMat4("projection", m_myCameraManager->godProjectionMatrix());
+		debugCascadeShaderPointer->setMat4("view", m_myCameraManager->godViewMatrix());
+		drawCascadeVolumeVisualizers(lightMatrices, debugCascadeShaderPointer);
+		glDisable(GL_BLEND);
+	}*/
 }
 
 std::vector<glm::mat4> playerLightMatrices;
@@ -1580,6 +1686,7 @@ void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_img
 	glUniform1i(deferredFlagLoc, deferredFlag);
 	renderQuad();
 }
+
 void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
 	glm::mat4 godViewMatrix = m_myCameraManager->godViewMatrix();

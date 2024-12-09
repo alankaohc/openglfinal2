@@ -169,15 +169,16 @@ void main()
                      (p2.y > -1.0) && (p2.y < 1.0) && 
                      (p2.z > -1.0) && (p2.z < 1.0);
     
- /*   
-    if (isInside0 && !isInside1) {
+  
+    if (isInside0) {
         lighting = mix(lighting, vec3(1.0, 0.0, 0.0), 0.2); 
-    } else if (isInside1 && !isInside2) {
+    } else if (isInside1) {
         lighting = mix(lighting, vec3(0.0, 1.0, 0.0), 0.2); 
     } else if (isInside2) {
         lighting = mix(lighting, vec3(0.0, 0.0, 1.0), 0.2);
-    } 
- */ 
+    }
+    
+/* 
     if (index == 0) {
         lighting = mix(lighting, vec3(1.0, 0.0, 0.0), 0.2); 
     } else if (index == 1) {
@@ -185,6 +186,7 @@ void main()
     } else if (index == 2) {
         lighting = mix(lighting, vec3(0.0, 0.0, 1.0), 0.2);
     }
+    */
     // final
     vec3 color = pow(lighting, vec3(0.3));
     FragPos = normalize(FragPos) * 0.5 + 0.5;
