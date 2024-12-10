@@ -29,7 +29,6 @@ uniform int cascadeCount;   // number of frusta - 1
 
 uniform vec4 corners[3];
 
-int index = -1;
 // vertex shader ¥u¶Ç world space coord¡A
 float ShadowCalculation(vec3 fragPosWorldSpace, mat4 view, vec3 N)
 {
@@ -44,14 +43,12 @@ float ShadowCalculation(vec3 fragPosWorldSpace, mat4 view, vec3 N)
         if (depthValue < cascadePlaneDistances[i])
         {
             layer = i;
-            index = i;
             break;
         }
     }
     if (layer == -1)
     {
         layer = cascadeCount;
-        index = 2;
     }
 
     vec4 fragPosLightSpace = lightSpaceMatrices[layer] * vec4(fragPosWorldSpace, 1.0);
