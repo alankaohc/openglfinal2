@@ -5,6 +5,7 @@ in vec3 f_worldNormal;
 in vec2 f_uv;
 in vec3 f_tanEyeDir;
 in vec3 f_tanLightDir;
+in mat3 f_TBN;
 
 uniform sampler2D albedoTexture ;
 uniform sampler2D NormalTexture ;
@@ -21,14 +22,17 @@ uniform bool u_NormalMappingEnabled;
 void main()
 {
 	vec3 V = normalize(f_tanEyeDir);
-	vec3 N = normalize(texture(NormalTexture, f_uv).rgb * 2.0 - vec3(1.0));
+	vec3 N = texture(NormalTexture, f_uv).rgb;
+	N = N * 2.0 - 1.0;
+	vec3 M = normalize(N);
+	N = normalize(f_TBN * N);
 	vec3 diffuse_albedo = texture(albedoTexture, f_uv).rgb;
 		
 	gPosition = f_worldVertex;
 	gDiffuse = vec4(diffuse_albedo , 1.0);
 	gSpecular = vec4(1.0, 1.0, 1.0, 32.0);
 	if (u_NormalMappingEnabled) {
-		gNormal = mix(N, f_worldNormal, 0.5);
+		gNormal = N;
 	}
 	else {
 		gNormal = f_worldNormal;

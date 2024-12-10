@@ -23,7 +23,7 @@ void MyImGuiPanel::update() {
 
 	
 	ImGui::Checkbox("Normal Mapping", &m_normalMappingEnabled);
-	ImGui::Checkbox("Visualize cascade", &m_cascadeEnabled);
+	ImGui::Checkbox("Visualize Cascade", &m_cascadeEnabled);
 
 
 	if (ImGui::RadioButton("Final", mode == 1)) {

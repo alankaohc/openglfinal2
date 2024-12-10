@@ -11,7 +11,7 @@ out vec3 f_worldNormal;
 out vec2 f_uv;
 out vec3 f_tanEyeDir;
 out vec3 f_tanLightDir;
-
+out mat3 f_TBN;
 
 uniform mat4 projMat ;
 uniform mat4 viewMat ;
@@ -30,6 +30,7 @@ void main() {
 	vec3 T = normalize(mat3(mv_matrix) * v_tangent);
 	vec3 N = normalize(mat3(mv_matrix) * v_normal);
 	vec3 B = cross(N, T);
+	f_TBN = mat3(T,B,N);
 	vec3 L = light_pos - P.xyz;
 	vec3 V = -P.xyz;
 	f_tanLightDir = normalize(vec3(dot(L, T), dot(L, B), dot(L, N)));

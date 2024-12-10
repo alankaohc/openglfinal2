@@ -94,7 +94,19 @@ float ShadowCalculation(vec3 fragPosWorldSpace, mat4 view, vec3 N)
     return shadow;
 }
 
-
+vec4 withFog(vec4 color, vec4 f_viewVertex){
+	const vec4 FOG_COLOR = vec4(0.0, 0.0, 0.0, 1) ;
+	const float MAX_DIST = 400.0 ;
+	const float MIN_DIST = 350.0 ;
+	
+	float dis = length(f_viewVertex) ;
+	float fogFactor = (MAX_DIST - dis) / (MAX_DIST - MIN_DIST) ;
+	fogFactor = clamp(fogFactor, 0.0, 1.0) ;
+	fogFactor = fogFactor * fogFactor ;
+	
+	vec4 colorWithFog = mix(FOG_COLOR, color, fogFactor) ;
+	return colorWithFog ;
+}
 
 void main()
 {            
@@ -161,23 +173,23 @@ void main()
     vec3 colorWithCascade = pow(lightingWithCascade, vec3(0.3));
     vec3 color = pow(lighting, vec3(0.3));
 
-    FragPos = normalize(FragPos) * 0.5 + 0.5;
+    vec3 pos = normalize(FragPos) * 0.5 + 0.5;
     N = N * 0.5 + 0.5;
     vec3 tex = texture(gDiffuse, TexCoords).rgb;
 
     if (flag == 1) {
         if (cascadeFlag) {
-            FragColor = vec4(colorWithCascade, 1.0);
+            FragColor = withFog( vec4(colorWithCascade, 1.0), view * vec4(FragPos, 1.0));
         } else {
-            FragColor = vec4(color, 1.0);
+            FragColor = withFog( vec4(color, 1.0), view * vec4(FragPos, 1.0));
         }
     } else if (flag == 2) {
-        FragColor = vec4(N, 1.0);
+        FragColor = withFog( vec4(N, 1.0), view * vec4(FragPos, 1.0));
     } else if (flag == 3) {
         FragColor = vec4(specular_albedo, 1.0);    
     } else if (flag == 4) {
-        FragColor = vec4(tex, 1.0);
+        FragColor = withFog( vec4(tex, 1.0), view * vec4(FragPos, 1.0));
     } else if (flag == 5){
-        FragColor = vec4(FragPos, 1.0);
+        FragColor = withFog(vec4(pos, 1.0), view * vec4(FragPos, 1.0));
     }
 }

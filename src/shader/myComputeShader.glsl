@@ -108,7 +108,7 @@ void main() {
 		vec4 clipSpaceV = viewProjMat * vec4(array[i].xyz, 1.0);
 		clipSpaceV = clipSpaceV / clipSpaceV.w;
 		bool isInside = (clipSpaceV.x > -1.0) && (clipSpaceV.x < 1.0) && (clipSpaceV.y > -1.0) &&
-		(clipSpaceV.y < 1.0) && (clipSpaceV.z > -1.0) && (clipSpaceV.z < 0.99978) ;
+		(clipSpaceV.y < 1.0) && (clipSpaceV.z > -1.0) && (clipSpaceV.z < 0.99975) ;
 		if (isInside == true) {
 			frustumCulled = false;
 			break;
