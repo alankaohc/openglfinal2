@@ -176,7 +176,9 @@ GLuint quadSpecularLoc;
 int deferredFlag = 1;
 GLuint deferredFlagLoc;
 int lastModeT = 4;
-bool normalMappingEnabled;
+bool normalMappingEnabled = false;
+bool cascadeEnabled = false;
+
 
 // normal mapping
 std::vector<float> rockTangent;
@@ -196,7 +198,7 @@ MyShader* grassShadowShaderPointer;
 
 
 MyShader* rockShadowShaderPointer;
-
+MyShader* planeShadowShaderPointer;
 
 // cascaded shadow map
 GLuint lightFBO;
@@ -800,6 +802,36 @@ void rockInit() {
 
 	glBindVertexArray(0);
 }
+
+void planeInit() {
+	// initialize VAO
+	glGenVertexArrays(1, &planeVaoHandle);
+	glBindVertexArray(planeVaoHandle);
+	// bind the VBO、UVBO、NBO
+	glGenBuffers(1, &planeVboHandle);
+	glBindBuffer(GL_ARRAY_BUFFER, planeVboHandle);
+	glBufferData(GL_ARRAY_BUFFER, planeVertexData.size() * sizeof(float), planeVertexData.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glGenBuffers(1, &planeUvboHandle);
+	glBindBuffer(GL_ARRAY_BUFFER, planeUvboHandle);
+	glBufferData(GL_ARRAY_BUFFER, planeUvData.size() * sizeof(float), planeUvData.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(2);
+
+	glGenBuffers(1, &planeNboHandle);
+	glBindBuffer(GL_ARRAY_BUFFER, planeNboHandle);
+	glBufferData(GL_ARRAY_BUFFER, planeNormalData.size() * sizeof(float), planeNormalData.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+
+	glGenBuffers(1, &planeIboHandle);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planeIboHandle);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, planeIndices.size() * sizeof(float), planeIndices.data(), GL_STATIC_DRAW);
+	glBindVertexArray(0);
+}
+
 void initialize() {
 	// prepare a SSBO for storing raw instance data
 	GLuint rawInstanceDataBufferHandle;
@@ -813,6 +845,7 @@ void initialize() {
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, validInstanceDataBufferHandle);
 	glBufferStorage(GL_SHADER_STORAGE_BUFFER, NUM_TOTAL_INSTANCE * sizeof(InstanceProperties), nullptr, GL_MAP_READ_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, validInstanceDataBufferHandle);
+
 
 	// SSBO col0
 	GLuint rawRotColHandle0;
@@ -947,44 +980,12 @@ void initialize() {
 	glEnableVertexAttribArray(7);
 	glVertexAttribDivisor(7, 1);
 
-
-
-
 	glBindVertexArray(0);
-
 
 
 	// rock
 	rockInit();
-
-
-	// plane
-	// initialize VAO
-	glGenVertexArrays(1, &planeVaoHandle);
-	glBindVertexArray(planeVaoHandle);
-	// bind the VBO、UVBO、NBO
-	glGenBuffers(1, &planeVboHandle);
-	glBindBuffer(GL_ARRAY_BUFFER, planeVboHandle);
-	glBufferData(GL_ARRAY_BUFFER, planeVertexData.size() * sizeof(float), planeVertexData.data(), GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	glGenBuffers(1, &planeUvboHandle);
-	glBindBuffer(GL_ARRAY_BUFFER, planeUvboHandle);
-	glBufferData(GL_ARRAY_BUFFER, planeUvData.size() * sizeof(float), planeUvData.data(), GL_STATIC_DRAW);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(2);
-
-	glGenBuffers(1, &planeNboHandle);
-	glBindBuffer(GL_ARRAY_BUFFER, planeNboHandle);
-	glBufferData(GL_ARRAY_BUFFER, planeNormalData.size() * sizeof(float), planeNormalData.data(), GL_STATIC_DRAW);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(1);
-
-	glGenBuffers(1, &planeIboHandle);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planeIboHandle);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, planeIndices.size() * sizeof(float), planeIndices.data(), GL_STATIC_DRAW);
-	glBindVertexArray(0);
+	planeInit();
 
 }
 
@@ -1088,11 +1089,16 @@ void myInit() {
 	myResetCompShaderPointer = new MyComputeShader("src/shader/myResetComputeShader.glsl");
 	deferredShaderPointer = new MyShader("src/shader/deferredVertexShader.glsl", "src/shader/deferredFragmentShader.glsl");
 	grassShadowShaderPointer = new MyShader("src/shader/grassShadowVertexShader.glsl",
-		"src/shader/grassShadowFragmentShader.glsl",
-		"src/shader/grassShadowGeometryShader.glsl");
+		                                    "src/shader/grassShadowFragmentShader.glsl",
+		                                    "src/shader/grassShadowGeometryShader.glsl");
 	rockShadowShaderPointer = new MyShader("src/shader/rockShadowVertexShader.glsl",
-		"src/shader/rockShadowFragmentShader.glsl",
-		"src/shader/rockShadowGeometryShader.glsl");
+		                                   "src/shader/rockShadowFragmentShader.glsl",
+		                                   "src/shader/rockShadowGeometryShader.glsl");
+
+	planeShadowShaderPointer = new MyShader("src/shader/planeShadowVertexShader.glsl",
+		                                    "src/shader/planeShadowFragmentShader.glsl",
+		                                    "src/shader/planeShadowGeometryShader.glsl");
+
 
 
 	initSample();
@@ -1141,7 +1147,9 @@ void myUIinput(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imgui
 		}
 	}
 	normalMappingEnabled = m_imguiPanel->isNormalMappingEnabled();
+	cascadeEnabled = m_imguiPanel->isCascadeEnabled();
 	deferredFlag = m_imguiPanel->getMode();
+
 }
 
 void myGodGbufferRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
@@ -1272,8 +1280,6 @@ void myPlayerGbufferRender(const INANOA::MyCameraManager* m_myCameraManager, MyI
 	glDrawElements(GL_TRIANGLES, planeVertexCount, GL_UNSIGNED_INT, 0);
 }
 
-
-
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview)
 {
 	const auto inv = glm::inverse(projview);
@@ -1382,54 +1388,20 @@ std::vector<glm::mat4> getLightSpaceMatrices(INANOA::MyCameraManager* m_myCamera
 	return ret;
 }
 
+void myShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 
-std::vector<glm::mat4> globalLightMatrices;
-void myGodShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
-	//// 0. UBO setup
-	//const auto lightMatrices = getLightSpaceMatrices(m_myCameraManager);
-	//globalLightMatrices = lightMatrices; // visualization
+	glm::mat4 playerProjectionMatrix = m_myCameraManager->playerProjectionMatrix();
+	glm::mat4 playerViewMatrix = m_myCameraManager->playerViewMatrix();
+	glm::vec4 godViewPort = m_myCameraManager->godViewport();
+	glm::vec4 playerViewPort = m_myCameraManager->playerViewport();
 
-	//glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
-	//for (size_t i = 0; i < lightMatrices.size(); ++i)
-	//{
-	//	glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(glm::mat4x4), sizeof(glm::mat4x4), &lightMatrices[i]);
-	//}
-	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
-	//
-	//// 1. render depth of scene to texture (from light's perspective)
-	//// --------------------------------------------------------------
-	////lightProjection = glm::perspective(glm::radians(45.0f), (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene
-	//// render scene from light's point of view
-	//
-	//grassShadowShaderPointer->use();
+	glm::mat4 model_matrix = glm::mat4(1.0);
+	glm::vec4 positionVec4 = glm::vec4(25.92, 18.27, 11.75, 1.0);
+	const glm::mat4 airplaneModelMat = m_myCameraManager->airplaneModelMatrix();
+	glm::vec4 planepositionVec4 = glm::vec4(0.0, 0.0, 0.0, 1.0);
 
-	//glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
-	//glViewport(0, 0, depthMapResolution, depthMapResolution);
-	//glClear(GL_DEPTH_BUFFER_BIT);
-	//glCullFace(GL_FRONT);  // peter panning
-	//// start render 
-	//glBindVertexArray(vaoHandle);
-	//glBindBuffer(GL_DRAW_INDIRECT_BUFFER, cmdBufferHandle);
-	//glUniformMatrix4fv(lightLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
-	//glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, 5, sizeof(DrawElementsIndirectCommand));
-	//// end render
-	//glCullFace(GL_BACK);
-	//
-
-	////rockShadowShaderPointer->use();
-	////glBindVertexArray(rockVaoHandle);
-	////glDrawElements(GL_TRIANGLES, rockVertexCount, GL_UNSIGNED_INT, 0);
-
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	//// reset viewport 應該不用，之後render 前會改
-	////glViewport(0, 0, fb_width, fb_height);
-	////glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-}
-
-void myPlayerShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 	// 0. UBO setup
 	const auto lightMatrices = getLightSpaceMatrices(m_myCameraManager);
-	globalLightMatrices = lightMatrices; // visualization
 
 	glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
 	for (size_t i = 0; i < lightMatrices.size(); ++i)
@@ -1448,26 +1420,36 @@ void myPlayerShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPan
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_TEXTURE_2D_ARRAY, lightDepthMaps, 0);
 	glViewport(0, 0, depthMapResolution, depthMapResolution);
 	glClear(GL_DEPTH_BUFFER_BIT);
-	//glCullFace(GL_FRONT);  // peter panning
+	glCullFace(GL_FRONT);  // peter panning
 	// start render 
 	glBindVertexArray(vaoHandle);
 	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, cmdBufferHandle);
 	//glUniformMatrix4fv(lightLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
-	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, 5, sizeof(DrawElementsIndirectCommand));
+	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, 4, sizeof(DrawElementsIndirectCommand));
 	// end render
-	//glCullFace(GL_BACK);
+	glCullFace(GL_BACK);
 
-	glm::vec4 positionVec4 = glm::vec4(25.92, 18.27, 11.75, 1.0);
+	
 	rockShadowShaderPointer->use();
 	rockShadowShaderPointer->setVec4("v_worldPosOffset", positionVec4);
 	//glUniform4fv(glGetUniformLocation(rockShadowShaderPointer->ID, "v_worldPosOffset"), 1, glm::value_ptr(positionVec4));
-	glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
+
 	////glFramebufferTexture(GL_FRAMEBUFFER, GL_TEXTURE_2D_ARRAY, lightDepthMaps, 0);
 	////glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
 	////glViewport(0, 0, depthMapResolution, depthMapResolution);
 	////glClear(GL_DEPTH_BUFFER_BIT);
 	glBindVertexArray(rockVaoHandle);
+	glCullFace(GL_FRONT);
 	glDrawElements(GL_TRIANGLES, rockVertexCount, GL_UNSIGNED_INT, 0);
+	glCullFace(GL_BACK);
+
+	// plane
+	planeShadowShaderPointer->use();
+	glBindVertexArray(planeVaoHandle);
+	planeShadowShaderPointer->setMat4("modelMat", airplaneModelMat);
+	glCullFace(GL_FRONT);
+	glDrawElements(GL_TRIANGLES, planeVertexCount, GL_UNSIGNED_INT, 0);
+	glCullFace(GL_BACK);
 
 	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -1475,7 +1457,6 @@ void myPlayerShadowRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPan
 	//glViewport(0, 0, fb_width, fb_height);
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
-
 
 void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
@@ -1529,6 +1510,7 @@ void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_img
 	glUniform1i(quadSpecularLoc, 8);
 	deferredShaderPointer->setInt("shadowMap", 10);
 	glUniform1i(deferredFlagLoc, deferredFlag);
+	deferredShaderPointer->setBool("cascadeFlag", cascadeEnabled);
 	renderQuad();
 }
 
@@ -1580,6 +1562,7 @@ void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPan
 	glUniform1i(quadSpecularLoc, 8);
 	deferredShaderPointer->setInt("shadowMap", 10);
 	glUniform1i(deferredFlagLoc, deferredFlag);
+	//deferredShaderPointer->setBool("cascade", cascadeEnabled);
 	renderQuad();
 
 }

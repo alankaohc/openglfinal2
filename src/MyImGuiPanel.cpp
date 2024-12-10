@@ -23,33 +23,34 @@ void MyImGuiPanel::update() {
 
 	
 	ImGui::Checkbox("Normal Mapping", &m_normalMappingEnabled);
-	
+	ImGui::Checkbox("Visualize cascade", &m_cascadeEnabled);
 
-	if (ImGui::RadioButton("Option 1", mode == 1)) {
+
+	if (ImGui::RadioButton("Final", mode == 1)) {
 		mode = 1;
 	}
-	if (ImGui::RadioButton("Option 2", mode == 2)) {
+	if (ImGui::RadioButton("Normal", mode == 2)) {
 		mode = 2;		
 	}
-	if (ImGui::RadioButton("Option 3", mode == 3)) {
+	if (ImGui::RadioButton("Specular", mode == 3)) {
 		mode = 3;
 	}
-	if (ImGui::RadioButton("Option 4", mode == 4)) {
+	if (ImGui::RadioButton("Diffuse", mode == 4)) {
 		mode = 4;
 	}
-	if (ImGui::RadioButton("Option 5", mode == 5)) {
+	if (ImGui::RadioButton("Vertex", mode == 5)) {
 		mode = 5;
 	}
 	
-	if (ImGui::RadioButton("1", modeT == 1)) {
+	if (ImGui::RadioButton("Teleport 1", modeT == 1)) {
 		modeT = 1;
 
 	}
-	if (ImGui::RadioButton("2", modeT == 2)) {
+	if (ImGui::RadioButton("Teleport 2", modeT == 2)) {
 		modeT = 2;
 
 	}
-	if (ImGui::RadioButton("3", modeT == 3)) {
+	if (ImGui::RadioButton("Teleport 3", modeT == 3)) {
 		modeT = 3;
 
 	}

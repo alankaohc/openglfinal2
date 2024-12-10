@@ -47,12 +47,6 @@ void viewFrustumMultiClipCorner(const std::vector<float> &depths, const glm::mat
 
 
 
-
-
-
-
-
-
 int main(){
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -251,7 +245,8 @@ void paintGL(){
 	myUIinput(m_myCameraManager, m_imguiPanel);
 	// compute shader
 	myComputeRender(m_myCameraManager);
-
+	// shadow map
+	myShadowRender(m_myCameraManager, m_imguiPanel);
 	//////////////////////////////
 	// rendering with god view	//
 	//////////////////////////////
@@ -265,8 +260,6 @@ void paintGL(){
 	defaultRenderer->renderPass();
 	myGodGbufferRender(m_myCameraManager, m_imguiPanel);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	// shadow map
-	//myGodShadowRender(m_myCameraManager, m_imguiPanel);
 	// render
 	myGodRender(m_myCameraManager, m_imguiPanel);
 
@@ -283,8 +276,6 @@ void paintGL(){
 	defaultRenderer->renderPass();
 	myPlayerGbufferRender(m_myCameraManager, m_imguiPanel);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	// shadow map
-	myPlayerShadowRender(m_myCameraManager, m_imguiPanel);
 	// render
 	myPlayerRender(m_myCameraManager, m_imguiPanel);
 

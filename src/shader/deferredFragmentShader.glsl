@@ -8,9 +8,10 @@ layout (location=1) uniform sampler2D gNormal;
 layout (location=2) uniform sampler2D gDiffuse;
 layout (location=3) uniform sampler2D gPosition;
 uniform int flag;
+uniform bool cascadeFlag;
+
 
 // CSM
-
 uniform sampler2DArray shadowMap;
 
 uniform vec3 lightDir;
@@ -26,28 +27,8 @@ layout (std140) uniform LightSpaceMatrices
 uniform float cascadePlaneDistances[16];
 uniform int cascadeCount;   // number of frusta - 1
 
-
 uniform vec4 corners[3];
 
-/*
-float ShadowCalculation(vec4 fragPosLightSpace, vec3 N, vec3 L)
-{
-    // perform perspective divide
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    // transform to [0,1] range
-    projCoords = projCoords * 0.5 + 0.5;
-    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
-    float closestDepth = texture(depthMap, projCoords.xy).r; 
-    // get depth of current fragment from light's perspective
-    float currentDepth = projCoords.z;
-    // check whether current frag pos is in shadow
-
-    float bias = max(0.05 * (1.0 - dot(N, L)), 0.005);  
-    float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0; 
-    
-    return shadow;
-}  
-*/
 int index = -1;
 // vertex shader ¥u¶Ç world space coord¡A
 float ShadowCalculation(vec3 fragPosWorldSpace, mat4 view, vec3 N)
@@ -142,6 +123,7 @@ void main()
     // calculate shadow
     float shadow = ShadowCalculation(FragPos, view, N);   
     
+    vec3 lightingWithCascade = Ia*ambient + (1.0 - shadow*2.0) * (Id*diffuse + Is*specular);
     vec3 lighting = Ia*ambient + (1.0 - shadow*2.0) * (Id*diffuse + Is*specular);
     
 
@@ -171,30 +153,27 @@ void main()
     
   
     if (isInside0) {
-        lighting = mix(lighting, vec3(1.0, 0.0, 0.0), 0.2); 
+        lightingWithCascade = mix(lightingWithCascade, vec3(1.0, 0.0, 0.0), 0.2); 
     } else if (isInside1) {
-        lighting = mix(lighting, vec3(0.0, 1.0, 0.0), 0.2); 
+        lightingWithCascade = mix(lightingWithCascade, vec3(0.0, 1.0, 0.0), 0.2); 
     } else if (isInside2) {
-        lighting = mix(lighting, vec3(0.0, 0.0, 1.0), 0.2);
+        lightingWithCascade = mix(lightingWithCascade, vec3(0.0, 0.0, 1.0), 0.2);
     }
     
-/* 
-    if (index == 0) {
-        lighting = mix(lighting, vec3(1.0, 0.0, 0.0), 0.2); 
-    } else if (index == 1) {
-        lighting = mix(lighting, vec3(0.0, 1.0, 0.0), 0.2);
-    } else if (index == 2) {
-        lighting = mix(lighting, vec3(0.0, 0.0, 1.0), 0.2);
-    }
-    */
     // final
+    vec3 colorWithCascade = pow(lightingWithCascade, vec3(0.3));
     vec3 color = pow(lighting, vec3(0.3));
+
     FragPos = normalize(FragPos) * 0.5 + 0.5;
     N = N * 0.5 + 0.5;
     vec3 tex = texture(gDiffuse, TexCoords).rgb;
 
     if (flag == 1) {
-        FragColor = vec4(color, 1.0);
+        if (cascadeFlag) {
+            FragColor = vec4(colorWithCascade, 1.0);
+        } else {
+            FragColor = vec4(color, 1.0);
+        }
     } else if (flag == 2) {
         FragColor = vec4(N, 1.0);
     } else if (flag == 3) {

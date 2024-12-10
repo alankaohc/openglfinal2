@@ -28,9 +28,9 @@ void main()
 	gDiffuse = vec4(diffuse_albedo , 1.0);
 	gSpecular = vec4(1.0, 1.0, 1.0, 32.0);
 	if (u_NormalMappingEnabled) {
-		gNormal = N;
+		gNormal = mix(N, f_worldNormal, 0.5);
 	}
 	else {
-		gNormal = diffuse_albedo;
+		gNormal = f_worldNormal;
 	}
 }
