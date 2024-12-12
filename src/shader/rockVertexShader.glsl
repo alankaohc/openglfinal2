@@ -26,9 +26,9 @@ uniform vec3 light_pos = vec3(0.4, 0.5, 0.8);
 
 void main() {
 	vec4 P = modelMat * vec4(v_vertex, 1.0);
-	mat4 mv_matrix = viewMat * modelMat;
-	vec3 T = normalize(mat3(mv_matrix) * v_tangent);
-	vec3 N = normalize(mat3(mv_matrix) * v_normal);
+	//mat4 mv_matrix = viewMat * modelMat;
+	vec3 T = normalize(mat3(modelMat) * v_tangent);
+	vec3 N = normalize(mat3(modelMat) * v_normal);
 	vec3 B = cross(N, T);
 	f_TBN = mat3(T,B,N);
 	vec3 L = light_pos - P.xyz;

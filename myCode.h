@@ -213,6 +213,136 @@ glm::vec3 lightDir = glm::vec3(0.4, 0.5, 0.8);
 
 
 
+
+
+
+// sphere culling 
+
+void culling(INANOA::MyCameraManager* m_myCameraManager) {
+	// 算6個面朝內的 normal, tangent, binormal
+	glm::mat4 proj = m_myCameraManager->playerProjectionMatrix();
+	glm::mat4 view = m_myCameraManager->playerViewMatrix();
+	glm::mat4 projView = proj * view;
+	glm::mat4 inv = glm::inverse(projView);
+	
+	glm::vec4 Pt0 = inv * glm::vec4(-1.0,  1.0, 1.0, 1.0f);
+	glm::vec4 Pt1 = inv * glm::vec4( 1.0,  1.0, 1.0, 1.0f);
+	glm::vec4 Pt2 = inv * glm::vec4(-1.0, -1.0, 1.0, 1.0f);
+	glm::vec4 Pt3 = inv * glm::vec4( 1.0, -1.0, 1.0, 1.0f);
+	glm::vec4 Pt4 = inv * glm::vec4(-1.0,  1.0, 1.0, -1.0f);
+	glm::vec4 Pt5 = inv * glm::vec4( 1.0,  1.0, 1.0, -1.0f);
+	glm::vec4 Pt6 = inv * glm::vec4(-1.0, -1.0, 1.0, -1.0f);
+	glm::vec4 Pt7 = inv * glm::vec4( 1.0, -1.0, 1.0, -1.0f);
+	// world space
+	Pt0 = Pt0 / Pt0.w;
+	Pt1 = Pt1 / Pt1.w;
+	Pt2 = Pt2 / Pt2.w;
+	Pt3 = Pt3 / Pt3.w;
+	Pt4 = Pt4 / Pt4.w;
+	Pt5 = Pt5 / Pt5.w;
+	Pt6 = Pt6 / Pt6.w;
+	Pt7 = Pt7 / Pt7.w;
+	
+	glm::vec3 pt0 = glm::vec3(Pt0);
+	glm::vec3 pt1 = glm::vec3(Pt1);
+	glm::vec3 pt2 = glm::vec3(Pt2);
+	glm::vec3 pt3 = glm::vec3(Pt3);
+	glm::vec3 pt4 = glm::vec3(Pt4);
+	glm::vec3 pt5 = glm::vec3(Pt5);
+	glm::vec3 pt6 = glm::vec3(Pt6);
+	glm::vec3 pt7 = glm::vec3(Pt7);
+
+
+	// top
+	glm::vec3 t_top = pt1 - pt0;
+	t_top = glm::normalize(t_top);
+	glm::vec3 b_top = glm::vec3(pt4 - pt0);
+	b_top = glm::normalize(b_top);
+	glm::vec3 n_top = glm::cross(b_top, t_top);
+	n_top = glm::normalize(n_top);
+	b_top = glm::cross(t_top, n_top);
+	b_top = glm::normalize(b_top);
+	std::cout << "t0: (" << t_top.x << ", " << t_top.y << ", " << t_top.z << ")" << std::endl;
+	std::cout << "b0: (" << b_top.x << ", " << b_top.y << ", " << b_top.z << ")" << std::endl;
+	std::cout << "n0: (" << n_top.x << ", " << n_top.y << ", " << n_top.z << ")" << std::endl;
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "ori_top"), 1, glm::value_ptr(pt0));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "t_top"), 1, glm::value_ptr(t_top));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "b_top"), 1, glm::value_ptr(b_top));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "n_top"), 1, glm::value_ptr(n_top));
+
+	// btm
+	glm::vec3 t_btm = glm::vec3(pt2 - pt3);
+	t_btm = glm::normalize(t_btm);
+	glm::vec3 b_btm = glm::vec3(pt7 - pt3);
+	b_btm = glm::normalize(b_btm);
+	glm::vec3 n_btm = glm::cross(b_btm, t_btm);
+	n_btm = glm::normalize(n_btm);
+	b_btm = glm::cross(t_btm, n_btm);
+	b_btm = glm::normalize(b_btm);
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "ori_btm"), 1, glm::value_ptr(pt3));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "t_btm"), 1, glm::value_ptr(t_btm));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "b_btm"), 1, glm::value_ptr(b_btm));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "n_btm"), 1, glm::value_ptr(n_btm));
+
+	// right
+	glm::vec3 t_right = glm::vec3(pt3 - pt1);
+	t_right = glm::normalize(t_right);
+	glm::vec3 b_right = glm::vec3(pt5 - pt1);
+	b_right = glm::normalize(b_right);
+	glm::vec3 n_right = glm::cross(b_right, t_right);
+	n_right = glm::normalize(n_right);
+	b_right = glm::cross(t_right, n_right);
+	b_right = glm::normalize(b_right);
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "ori_right"), 1, glm::value_ptr(pt1));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "t_right"), 1, glm::value_ptr(t_right));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "b_right"), 1, glm::value_ptr(b_right));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "n_right"), 1, glm::value_ptr(n_right));
+
+	// left
+	glm::vec3 t_left = glm::vec3(pt0 - pt2);
+	t_left = glm::normalize(t_left);
+	glm::vec3 b_left = glm::vec3(pt6 - pt2);
+	b_left = glm::normalize(b_left);
+	glm::vec3 n_left = glm::cross(b_left, t_left);
+	n_left = glm::normalize(n_left);
+	b_left = glm::cross(t_left, n_left);
+	b_left = glm::normalize(b_left);
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "ori_left"), 1, glm::value_ptr(pt2));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "t_left"), 1, glm::value_ptr(t_left));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "b_left"), 1, glm::value_ptr(b_left));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "n_left"), 1, glm::value_ptr(n_left));
+
+	// near
+	glm::vec3 t_near = glm::vec3(pt2 - pt0);
+	t_near = glm::normalize(t_near);
+	glm::vec3 b_near = glm::vec3(pt1 - pt0);
+	b_near = glm::normalize(b_near);
+	glm::vec3 n_near = glm::cross(b_near, t_near);
+	n_near = glm::normalize(n_near);
+	b_near = glm::cross(t_near, n_near);
+	b_near = glm::normalize(b_near);
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "ori_near"), 1, glm::value_ptr(pt0));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "t_near"), 1, glm::value_ptr(t_near));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "b_near"), 1, glm::value_ptr(b_near));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "n_near"), 1, glm::value_ptr(n_near));
+	// far
+	glm::vec3 t_far = glm::vec3(pt5 - pt4);
+	t_far = glm::normalize(t_far);
+	glm::vec3 b_far = glm::vec3(pt6 - pt4);
+	b_far = glm::normalize(b_far);
+	glm::vec3 n_far = glm::cross(b_far, t_far);
+	n_far = glm::normalize(n_far);
+	b_far = glm::cross(t_far, n_far);
+	b_far = glm::normalize(b_far);
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "ori_far"), 1, glm::value_ptr(pt4));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "t_far"), 1, glm::value_ptr(t_far));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "b_far"), 1, glm::value_ptr(b_far));
+	glUniform3fv(glGetUniformLocation(myCompShaderPointer->ID, "n_far"), 1, glm::value_ptr(n_far));
+}
+
+// end sphere culling
+
+
 void renderQuad()
 {
 	if (quadVAO == 0)
@@ -1111,7 +1241,7 @@ void myInit() {
 	configureUBO();
 }
 
-void myComputeRender(const INANOA::MyCameraManager* m_myCameraManager) {
+void myComputeRender(INANOA::MyCameraManager* m_myCameraManager) {
 	glm::mat4 playerProjectionMatrix = m_myCameraManager->playerProjectionMatrix();
 	glm::mat4 playerViewMatrix = m_myCameraManager->playerViewMatrix();
 	// reset shader
@@ -1121,10 +1251,15 @@ void myComputeRender(const INANOA::MyCameraManager* m_myCameraManager) {
 
 	// compute shader
 	myCompShaderPointer->use();
+	culling(m_myCameraManager);
 	glUniform1i(glGetUniformLocation(myCompShaderPointer->ID, "numMaxInstance"), NUM_TOTAL_INSTANCE);
 	const glm::mat4  viewProj = playerProjectionMatrix * playerViewMatrix;
+	const glm::mat4 invViewProj = glm::inverse(viewProj);
 	GLuint viewProjMatLoc = glGetUniformLocation(myCompShaderPointer->ID, "viewProjMat");
 	glUniformMatrix4fv(viewProjMatLoc, 1, false, glm::value_ptr(viewProj));
+	GLuint invViewProjMatLoc = glGetUniformLocation(myCompShaderPointer->ID, "invViewProjMat");
+	glUniformMatrix4fv(invViewProjMatLoc, 1, false, glm::value_ptr(invViewProj));
+
 	glDispatchCompute((NUM_TOTAL_INSTANCE / 1024) + 1, 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
@@ -1135,6 +1270,7 @@ void myUIinput(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imgui
 		case 1:
 			m_myCameraManager->teleport(0);
 			lastModeT = 1;
+			
 			break;
 		case 2:
 			m_myCameraManager->teleport(1);
@@ -1514,7 +1650,7 @@ void myGodRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_img
 	renderQuad();
 }
 
-void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
+void myPlayerRender(INANOA::MyCameraManager* m_myCameraManager, MyImGuiPanel* m_imguiPanel) {
 	glm::mat4 godProjectionMatrix = m_myCameraManager->godProjectionMatrix();
 	glm::mat4 godViewMatrix = m_myCameraManager->godViewMatrix();
 	glm::vec4 godViewPort = m_myCameraManager->godViewport();
@@ -1566,4 +1702,8 @@ void myPlayerRender(const INANOA::MyCameraManager* m_myCameraManager, MyImGuiPan
 	renderQuad();
 
 }
+
+
+
+
 
